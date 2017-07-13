@@ -8,7 +8,7 @@ rlibc = "*"
 
 [lib]
 name = "kernel"
-path = "src/lib.rs"
+path = "lib.rs"
 crate-type = ["staticlib"]
 
 [profile.dev]
