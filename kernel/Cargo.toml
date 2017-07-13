@@ -1,0 +1,18 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+authors = ["mark <mmansi@utexas.edu>"]
+
+[dependencies]
+rlibc = "*"
+
+[lib]
+name = "kernel"
+path = "src/lib.rs"
+crate-type = ["staticlib"]
+
+[profile.dev]
+panic = "unwind"
+
+[profile.release]
+panic = "unwind"

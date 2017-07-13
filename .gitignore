@@ -1,0 +1,16 @@
+*.o
+*.rlib
+*.a
+
+*.d
+
+kernel/kernel
+kernel/target
+kernel/Cargo.lock
+user/user
+*.bin
+*.img
+*.gch
+
+*.swp
+*.swo
