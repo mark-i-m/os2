@@ -16,7 +16,6 @@ mod machine;
 
 /// This is the entry point to the kernel. It is the first rust code that runs.
 #[no_mangle]
-pub fn main() -> ! {
-    // TODO: will need to enter from the bootloader...
+pub fn kernel_main() -> ! {
     panic!("Hello, world");
 }
