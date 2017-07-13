@@ -32,3 +32,7 @@ A minimal OS kernel aimed at simplified code and usermode programming experience
 
     - Observation: Maybe concurrent programming is hard because it gives you
       too many options!
+
+# TODO
+- need to jump to 64-bit mode...
+- get printk and panic working
