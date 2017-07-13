@@ -35,4 +35,8 @@ A minimal OS kernel aimed at simplified code and usermode programming experience
 
 # TODO
 - need to jump to 64-bit mode...
+    - need to set up basic paging...
+    - gdt is already set up (need to make sure GDT from 32-bit mode will work in 64-bit mode)
+    - long jump from 32- to 64-bit mode
+    - combine start.S with mbr.S
 - get printk and panic working

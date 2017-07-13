@@ -221,6 +221,10 @@ done:
     ljmp $8,$loadKernelHere
 
 
+###############################################################################
+
+/* 32-bit "Protected" mode */
+
 .align 512
 
     .code32
@@ -229,7 +233,7 @@ loadKernelHere:
     mov %ax,%ss
     mov $16,%ax
     mov %ax,%ds
-    jmp kStart
+    jmp kStart32
 
 #define GDT_COUNT 6
 
@@ -279,8 +283,6 @@ tssDS:
     .long 5 * 8
 
 
-
-
 #define IDT_COUNT 256
 
     .global idt
@@ -299,3 +301,41 @@ memory_map: # save some space for a memory map of no more than 20 entries
     .global memory_map_count
 memory_map_count:
     .skip 4
+
+###############################################################################
+
+/*
+ * This is the 32 bit kernel entry point
+ *
+ * In protected mode
+ * At address 0x9000
+ * Paging is disabled
+ * ESP is not valid
+ * Temporary GDT
+ * BIOS IDT, TR
+ *
+ * We need to set up paging before we can go to long mode.
+ */
+
+	.extern kernel_main
+	.global kStart
+
+kStart32:
+	// TODO: set up paging
+	// TODO: long jump to kStart64
+
+###############################################################################
+
+/* This is the 64-bit kernel entry point! We made it to long mode! */
+
+kStart64:
+	mov $kernelStack,%esp
+	call kernel_main
+loop:
+	jmp loop
+
+    .align 8
+	.skip 9182
+kernelStack:
+	.word 0
+
