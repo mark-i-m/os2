@@ -38,19 +38,24 @@ pub fn kernel_main() -> ! {
     printk!("\nYo Yo Yo! Made it to `kernel_main`! Hooray!\n");
 
     // Set up TSS
-    printk!("Setting up TSS\n");
+    printk!("TSS");
     interrupts::tss_init();
+    printk!(" ✔\n");
 
     // Set up interrupt handling
-    printk!("Setting up interrupts\n");
+    printk!("Interrupts");
     interrupts::init();
+    printk!(" ✔\n");
 
     // Initialize memory
-    printk!("Setting up memory\n");
+    printk!("Memory");
     memory::init();
+    printk!(" ✔\n");
 
     // Create the init process
+    printk!("Processes");
     let init = Process::new(main_fn_init);
+    printk!(" ✔\n");
 
     panic!("Hello, world");
 }

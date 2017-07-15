@@ -59,8 +59,6 @@ pub fn init() {
         add_interrupt_handler(FIRST_IDT + 14, irq14);
         add_interrupt_handler(FIRST_IDT + 15, irq15);
     }
-
-    printk!("pic inited\n");
 }
 
 /// End of interrupt: send the next irq, but interrupts still disabled
