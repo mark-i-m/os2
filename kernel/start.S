@@ -89,6 +89,7 @@ page_map_l4:
 /*
 Long-mode GDT: a single code segment. No data segment is need in 64-bit mode.
 */
+	.global gdt64
 gdt64:
 	.quad 0 // zero entry
 	.quad (1<<43) | (1<<44) | (1<<47) | (1<<53) // code segment

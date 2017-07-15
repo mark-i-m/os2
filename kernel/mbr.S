@@ -266,18 +266,6 @@ gdtDesc:
 kernelCodeSeg:
     .long 1 * 8
 
-    .global kernelDataSeg
-kernelDataSeg:
-    .long 2 * 8
-
-    .global userCodeSeg
-userCodeSeg:
-    .long 3 * 8 + 3
-
-    .global userDataSeg
-userDataSeg:
-    .long 4 * 8 + 3
-
     .global tssDS
 tssDS:
     .long 5 * 8
