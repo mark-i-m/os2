@@ -21,7 +21,7 @@ pub unsafe fn inb(port: u16) -> u8 {
          andq $$0xff,%rax \n\t"
          : "={rax}"(read)
          : "r"(port)
-         : "rax"
+         : "rax", "rdx"
          : "volatile"
     };
 
@@ -47,7 +47,7 @@ pub unsafe fn outb(port: u16, val: u8) {
         popq %rdx \n\t"
         : /* No outputs */
         : "r"(port), "r"(val)
-        : "rax"
+        : "rax", "rdx"
         : "volatile"
     };
 }

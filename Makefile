@@ -22,7 +22,7 @@ KERNELSERIAL =
 
 # DO NOT ENABLE KVM!!! For some reason it causes weird crashes...
 run: kernel #user mkfs
-	qemu-system-x86_64 ${KERNELDEBUG} ${KERNELSERIAL} ${QEMUEXTRA} --serial mon:stdio -hdc kernel/kernel.img #-hdd mkfs/hdd.img TODO
+	qemu-system-x86_64 ${KERNELDEBUG} ${KERNELSERIAL} ${QEMUEXTRA} --serial mon:stdio -drive file=kernel/kernel.img,index=2,media=disk,format=raw  #-hdd mkfs/hdd.img TODO
 
 runtext: KERNELSERIAL = -nographic
 runtext: run

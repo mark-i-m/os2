@@ -20,5 +20,6 @@
       ]
   },
   "disable-redzone": true,
-  "eliminate-frame-pointer": false
+  "eliminate-frame-pointer": false,
+  "features": "-mmx,-sse,-avx,+soft-float"
 }
