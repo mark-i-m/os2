@@ -11,7 +11,6 @@ use debug::Debug;
 fn eh_personality() {}
 
 /// This function is used by `panic!` to display an error message.
-#[no_mangle]
 #[lang = "panic_fmt"]
 pub extern "C" fn rust_begin_unwind(args: fmt::Arguments, file: &'static str, line: u32) -> ! {
     use core::fmt::Write;

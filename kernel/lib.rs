@@ -17,5 +17,8 @@ mod machine;
 /// This is the entry point to the kernel. It is the first rust code that runs.
 #[no_mangle]
 pub fn kernel_main() -> ! {
+    printk!("\n");
+    printk!("Yo Yo Yo! Made it to `kernel_main`! Hooray!\n");
+
     panic!("Hello, world");
 }
