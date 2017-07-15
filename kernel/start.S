@@ -96,7 +96,8 @@ gdt64:
 
     .global tssDescriptor
 tssDescriptor:
-    .quad 0         # gdt64[2] TSS
+    .quad 0         # gdt64[2] TSS part1
+    .quad 0         # gdt64[3] TSS part2
 
 gdt64Desc:
 	.word (gdt64Desc - gdt64 - 1) // length of gdt
@@ -108,7 +109,7 @@ kernelCodeSeg:
 
     .global tssDS
 tssDS:
-    .long 5 * 8
+    .long 2 * 8
 
 ###############################################################################
 
