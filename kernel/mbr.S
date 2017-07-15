@@ -86,7 +86,7 @@ bootload_contd:
     # number of sectors copied
     xor %edi, %edi
 
-load_loop: 
+load_loop:
     # copy up to 127 sectors at a time
     mov $0, %eax
     movw %bx, %ax
@@ -108,7 +108,7 @@ set_num_sec:
     shl $12, %ecx
     mov %cx,6(%si)      # buffer segment
 
-    # which sector to start copying    
+    # which sector to start copying
     # most likely we won't need to copy more than 2^16 sectors
     # so the first 2B is sufficient
     mov $0, %ecx
@@ -127,7 +127,7 @@ set_num_sec:
     int $0x13       # read the sectors
 
     # on error print 'e' and hang
-    jnc loop_jmp    
+    jnc loop_jmp
     movb $'e',%al
     movb $1,%ah
     mov $0,%dx
@@ -146,7 +146,7 @@ loop_jmp:
 cont:
     # detect available memory: ripped from OSDev
     # http://wiki.osdev.org/Detecting_Memory_(x86)#Getting_an_E820_Memory_Map
-    mov $0, %di 
+    mov $0, %di
     mov %di, %es
     mov $memory_map, %di
     xor %ebx, %ebx              # ebx must be 0 to start
@@ -221,11 +221,11 @@ done:
     ljmp $8,$loadKernelHere
 
 
-###############################################################################
-
 /* 32-bit "Protected" mode */
 
 .align 512
+
+	.extern kStart32
 
     .code32
 loadKernelHere:
@@ -303,39 +303,3 @@ memory_map_count:
     .skip 4
 
 ###############################################################################
-
-/*
- * This is the 32 bit kernel entry point
- *
- * In protected mode
- * At address 0x9000
- * Paging is disabled
- * ESP is not valid
- * Temporary GDT
- * BIOS IDT, TR
- *
- * We need to set up paging before we can go to long mode.
- */
-
-	.extern kernel_main
-	.global kStart
-
-kStart32:
-	// TODO: set up paging
-	// TODO: long jump to kStart64
-
-###############################################################################
-
-/* This is the 64-bit kernel entry point! We made it to long mode! */
-
-kStart64:
-	mov $kernelStack,%esp
-	call kernel_main
-loop:
-	jmp loop
-
-    .align 8
-	.skip 9182
-kernelStack:
-	.word 0
-

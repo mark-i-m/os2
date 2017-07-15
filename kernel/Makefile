@@ -47,7 +47,7 @@ libkernel.a: ${RUSTFILES} Cargo.toml
 
 # kernel build
 kernel: ${OFILES} libkernel.a
-	${LD} --gc-sections -N -m elf_x86_64 -e start --section-start mbr=0x7c00 -Ttext=0x9000 -o kernel ${OFILES} --start-group libkernel.a --end-group
+	${LD} --gc-sections -m elf_x86_64 -N -n -e start --section-start mbr=0x7c00 -Ttext=0x9000 -o kernel ${OFILES} --start-group libkernel.a --end-group
 
 clean:
 	rm -f *.o

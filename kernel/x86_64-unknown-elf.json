@@ -9,9 +9,16 @@
   "llvm-target": "x86_64-unknown-linux-gnu",
   "os": "none",
   "position-independent-executables": true,
-  "pre-link-args": [ "-m64" ],
   "target-endian": "little",
   "target-pointer-width": "64",
   "no-compiler-rt": true,
-  "archive-format": "gnu"
+  "archive-format": "gnu",
+  "pre-link-args": {
+      "gcc": [
+          "-Wl,--nmagic",
+          "-nostartfiles"
+      ]
+  },
+  "disable-redzone": true,
+  "eliminate-frame-pointer": false
 }
