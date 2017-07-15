@@ -235,7 +235,7 @@ loadKernelHere:
     mov %ax,%ds
     jmp kStart32
 
-#define GDT_COUNT 6
+#define GDT_COUNT 5
 
 gdt:
     .long 0         # gdt[0] must be empty
@@ -253,22 +253,9 @@ gdt:
     .long 0x0000ffff    # gdt[4] USER DATA
     .long 0x00cff200
 
-    .global tssDescriptor
-tssDescriptor:
-    .long 0         # gdt[5] TSS
-    .long 0
-
 gdtDesc:
     .word (GDT_COUNT * 8) - 1
     .long gdt
-
-    .global kernelCodeSeg
-kernelCodeSeg:
-    .long 1 * 8
-
-    .global tssDS
-tssDS:
-    .long 5 * 8
 
 
 #define IDT_COUNT 256

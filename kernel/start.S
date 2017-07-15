@@ -94,11 +94,21 @@ gdt64:
 	.quad 0 // zero entry
 	.quad (1<<43) | (1<<44) | (1<<47) | (1<<53) // code segment
 
+    .global tssDescriptor
+tssDescriptor:
+    .quad 0         # gdt64[2] TSS
+
 gdt64Desc:
 	.word (gdt64Desc - gdt64 - 1) // length of gdt
 	.long gdt64
 
+    .global kernelCodeSeg
+kernelCodeSeg:
+    .long 1 * 8
 
+    .global tssDS
+tssDS:
+    .long 5 * 8
 
 ###############################################################################
 
