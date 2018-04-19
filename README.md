@@ -1,108 +1,68 @@
 # OS2
 
-A minimal OS kernel aimed at simplified code and usermode programming experience.
+- No timer-based preemption, no locks, no multi-threading (in userspace). Every
+  process is single threaded.
 
-- no timer-based preemption
+- Single address space. All executables need to be position-independent.
 
-- no demand-based paging: the process needs to explicitly, individually
-  request every page it intends to use.
+- Zero-copy Message-passing for IPC.
 
-- no shared memory: all communication is through zero-copy message passing
-
-- no multithreading: all concurrency is exists as message-passing
-  single-threaded processes
-
-- a quantum of execution is measured in the number of system calls the
-  process has in its budget. Each system call uses part of the quantum.
-  Think of it this way: a process gets N tokens at the beginning of its quantum,
-  which it can spend to do system calls. Each system call costs one token.
-
-- Assumption: processes may be greedy, but they are actually trying to
-  accomplish useful work...
-
-- Benefits:
-
-    - simplicity: demand paging, shared memory, and interrupts don't need
-      to be implemented
-
-    - easier programming model:
-
-        - programmer doesn't need synchronization primitives at all since
-          they know they will never be interrupted between system calls
-
-        - (not sure if this is easier or not, but ...) all synchronization
-          is done via message passing
-
-        - programmer knows exactly how much memory is being used because
-          they have to allocate it all manually!
-
-    - incentivises processes to be efficient
-
-        - less memory usage (since getting memory requires a syscall)
-
-        - less kernel/usermode switching (since these usually happen
-          because of syscalls, page faults, interrupts, etc.)
-
-- Observation: Maybe concurrent programming is hard because it gives you
-  too many options!
+- All tasks are Future-based. Every routine can return a `Future`, which is
+  pushed to the end of that processor's scheduler list. The cores work through
+  their lists in a work-stealing fashion.
 
 # TODO
 
 ## Global State
-- Each core has its own global state object, which is allocated at boot and inaccessable from other cores (no locking necessary)
+- Each core has its own global state object, which is allocated at boot and
+  inaccessable from other cores (no locking necessary)
 
-- There is one global state which is actually global. It is self-synchronizing and we avoid using it if possible
+- There is one global state which is actually global. It is self-synchronizing
+  and we avoid using it if possible
 
-- There is a static which points to each of these objects, which are dynamically allocated at boot time
+- There is a static which points to each of these objects, which are
+  dynamically allocated at boot time
 
 ## Memory management/allocation
 
 ### Phys mem allocator
 
-- Buddy heap
+- Buddy allocator for physical frames
 
-- Question: where to keep heap metadata?
+- Question: where to keep metadata?
+    - Need to make sure that allocation doesn't trigger allocation!
+    - Would be nice if we didn't have to keep metadata for every page!
 
-- Question: how can we use rust to make sure allocs/frees are sane? Should we use Box or something similar?
+### Virtual memory
 
-- Question: Should we use reference counting and allow objects to be shared around? Or can we get away with requiring that no more than one process has access to an object (normal rust)? (My preference is the latter)
+- Reserve a large portion of the address space for the kernel. Upper half (2^63
+  bytes)?
 
-### Slab allocators
+- Kernel heap allocator lives in part of this region of the single address
+  space and is backed by the page frame allocator.
 
-- Question: do I want slab allocators? Are they worth it? (maybe try to integrate them later)
+- Kernel exposes this heap as `Box`.
 
 ### Zero-copy message passing
 
-- Question: how to implement this?
-
-    - I think I want no shared memory (for safety)
-
-    - However, that means that I need to mess with page tables / flush TLB pages every time a message is passed :/
-
-    - Capability-based with exchange heap or something?
-
-    - Another idea: since the send/receiving process has to request access to the memory where the message will go anyway, perhaps we can just do the remapping then... but this really only works for the first time a message is received, right?
+- To send a message,
+    - Remove from sender page tables
+    - Remove from sender TLB
+    - Insert page into receiver page tables
+    - Allow the receiver to fault to map the page. Process receives message via
+      the normal future polling.
 
 ## Scheduling
 
 - No preemption
 
-- Single threaded processes only
+- Single threaded tasks only
 
-- Question: Shall I require multiple processors for this OS? (probably no)
+- Question: How to deal with scheduling events (e.g. receive a message, receive
+  hardware interrupt)?
+    - Events of various kinds (if they are intended for a user process) go into
+      a queue somewhere in the kernel (task struct?). When the future for that
+      event is polled, if the event is found, the future returns it.
 
-- Question: How to set a watchdog over process run time? Use interrupts at low freq? (probably yes)
-
-### Option 1
-
-- Lock-free per-process work queues
-
-- To share work, a processor can put some tasks in a shared area and others can take it
-
-### Option 2 (preferred)
-
-- Biased locking on per-process work queues
-
-- Work stealing schedulers on each processor
-
-- Question: Maybe time to read about Cilq?
+- Each processor core has a local work queue, and we use a work-stealing
+  scheduler to process futures/continuations.
