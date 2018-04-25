@@ -7,6 +7,7 @@ pub use self::sched::sched;
 
 use alloc::boxed::Box;
 
+#[allow(dead_code)]
 pub enum ProcessResult {
     Success(Continuation),
     Error(Continuation),

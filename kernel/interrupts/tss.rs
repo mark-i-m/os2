@@ -12,6 +12,8 @@ static mut TSS64: TSS = TSS::new();
 extern "C" {
     static mut tssDescriptor: TSSDescriptor;
     static tssDS: usize; // TODO: check all of the types in this file to make sure they are the right width
+
+    #[allow(dead_code)]
     static kernelDataSeg: u16;
 }
 
@@ -95,6 +97,7 @@ pub fn init() {
     }
 }
 
+#[allow(dead_code)]
 pub fn rsp0(v: usize) {
     unsafe {
         TSS64.rsp0(v);

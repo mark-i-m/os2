@@ -53,8 +53,9 @@ pub fn kernel_main() -> ! {
     printk!(" ✔\n");
 
     // Initialize memory
+    // make the kernel heap 3MiB starting at 1MiB.
     printk!("Memory");
-    memory::init();
+    memory::init(unsafe { &mut ALLOCATOR }, 1 << 20, 3 << 20);
     printk!(" ✔\n");
 
     // Create the init process

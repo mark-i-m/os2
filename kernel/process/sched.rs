@@ -6,7 +6,7 @@ use spin::Mutex;
 
 use super::{Continuation, ProcessResult};
 
-static scheduler: Mutex<Option<Scheduler>> = Mutex::new(None);
+static SCHEDULER: Mutex<Option<Scheduler>> = Mutex::new(None);
 
 struct Scheduler {
     todo: Vec<Continuation>,
@@ -17,13 +17,13 @@ pub fn init<F>(init: F)
 where
     F: 'static + Send + FnMut() -> ProcessResult,
 {
-    let mut s = scheduler.lock();
+    let mut s = SCHEDULER.lock();
 
     // Create the scheduler
     *s = Some(Scheduler { todo: Vec::new() });
 
     // Add `init` to the scheduler queue
-    scheduler
+    SCHEDULER
         .lock()
         .as_mut()
         .unwrap()
@@ -44,7 +44,7 @@ pub fn sched() -> ! {
     // TODO: clean old stack
 
     // get the next task
-    let next = if let Some(next) = scheduler.lock().as_mut().unwrap().todo.pop() {
+    let next = if let Some(next) = SCHEDULER.lock().as_mut().unwrap().todo.pop() {
         next
     } else {
         Continuation::new(|| sched()) // idle
@@ -56,7 +56,7 @@ pub fn sched() -> ! {
 
 /// Enqueue the given continuation in the scheduler.
 pub fn enqueue(cont: Continuation) {
-    scheduler.lock().as_mut().unwrap().todo.push(cont);
+    SCHEDULER.lock().as_mut().unwrap().todo.push(cont);
 }
 
 /// Enqueue the idle continuation. This continuation just calls the scheduler to schedule something

@@ -4,7 +4,7 @@
 use core::alloc::{GlobalAlloc, Layout, Opaque};
 use core::cell::RefCell;
 
-use smallheap::{self, Allocator};
+use smallheap::Allocator;
 
 /// A wrapper around the heap allocator for use as the `global_allocator`.
 pub struct KernelAllocator {
