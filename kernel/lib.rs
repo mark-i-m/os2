@@ -30,7 +30,7 @@ static mut ALLOCATOR: memory::KernelAllocator = memory::KernelAllocator::new();
 #[no_mangle]
 pub fn kernel_main() -> ! {
     // At this point we are still in the provisional environment with
-    // - the temporary page tables
+    // - the temporary page tables (first 2MiB of memory direct mapped)
     // - no IDT
     // - no current process
 
@@ -54,9 +54,9 @@ pub fn kernel_main() -> ! {
 
     // Initialize memory
     // make the kernel heap 3MiB starting at 1MiB.
-    printk!("Memory");
-    memory::init(unsafe { &mut ALLOCATOR }, 1 << 20, 3 << 20);
-    printk!(" ✔\n");
+    printk!("Memory ...\n\t");
+    memory::init(unsafe { &mut ALLOCATOR }, 1 << 20, 1 << 20);
+    printk!("Memory ✔\n");
 
     // Create the init process
     printk!("Processes");
