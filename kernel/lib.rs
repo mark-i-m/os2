@@ -1,10 +1,10 @@
-#![feature(lang_items, asm, start, const_fn, naked_functions)]
+#![feature(lang_items, asm, start, const_fn, naked_functions, alloc)]
 // Compile without libstd
 #![no_std]
 #![crate_type = "staticlib"]
 #![crate_name = "kernel"]
 
-extern crate futures;
+extern crate alloc;
 extern crate rlibc;
 extern crate spin;
 
@@ -17,7 +17,7 @@ mod interrupts;
 mod memory;
 mod process;
 
-use process::{main_fn_init, Process};
+use process::ProcessResult;
 
 /// This is the entry point to the kernel. It is the first rust code that runs.
 #[no_mangle]
@@ -52,8 +52,13 @@ pub fn kernel_main() -> ! {
 
     // Create the init process
     printk!("Processes");
-    let init = Process::new(main_fn_init);
+    process::init(|| {
+        printk!("Init!");
+        ProcessResult::Done
+    });
     printk!(" ✔\n");
 
-    panic!("Hello, world");
+    process::sched();
+
+    // We never return...
 }
