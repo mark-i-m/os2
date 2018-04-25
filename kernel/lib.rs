@@ -1,4 +1,6 @@
-#![feature(lang_items, asm, start, const_fn, naked_functions, alloc, global_allocator)]
+#![feature(
+    lang_items, asm, start, const_fn, naked_functions, alloc, global_allocator, allocator_api
+)]
 // Compile without libstd
 #![no_std]
 #![crate_type = "staticlib"]
@@ -6,8 +8,8 @@
 
 extern crate alloc;
 extern crate rlibc;
-extern crate spin;
 extern crate smallheap;
+extern crate spin;
 
 #[macro_use]
 mod debug;

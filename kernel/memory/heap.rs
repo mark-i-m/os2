@@ -57,4 +57,3 @@ pub fn init(allocator: &mut KernelAllocator, start: usize, size: usize) {
         free_size
     );
 }
-

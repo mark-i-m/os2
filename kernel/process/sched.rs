@@ -17,13 +17,18 @@ pub fn init<F>(init: F)
 where
     F: 'static + FnOnce() -> ProcessResult,
 {
-    let s = scheduler.lock();
+    let mut s = scheduler.lock();
 
     // Create the scheduler
     *s = Some(Scheduler { todo: Vec::new() });
 
     // Add `init` to the scheduler queue
-    scheduler.lock().unwrap().todo.push(Continuation::new(init));
+    scheduler
+        .lock()
+        .as_mut()
+        .unwrap()
+        .todo
+        .push(Continuation::new(init));
 }
 
 /// Run the scheduler to choose a task. Then switch to that task, discarding the current task as
@@ -31,7 +36,7 @@ where
 /// the idle continuation is used.
 pub fn sched() -> ! {
     // get the next task
-    let next = if let Some(next) = scheduler.lock().unwrap().todo.pop() {
+    let next = if let Some(next) = scheduler.lock().as_mut().unwrap().todo.pop() {
         next
     } else {
         Continuation::new(|| sched()) // idle
@@ -42,7 +47,7 @@ pub fn sched() -> ! {
 
 /// Enqueue the given continuation in the scheduler.
 pub fn enqueue(cont: Continuation) {
-    scheduler.lock().unwrap().todo.push(cont);
+    scheduler.lock().as_mut().unwrap().todo.push(cont);
 }
 
 /// Enqueue the idle continuation. This continuation just calls the scheduler to schedule something

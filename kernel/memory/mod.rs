@@ -1,4 +1,3 @@
-
 pub use self::heap::KernelAllocator;
 
 use interrupts::add_trap_handler;
