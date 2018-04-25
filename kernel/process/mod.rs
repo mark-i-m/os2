@@ -7,22 +7,22 @@ pub use self::sched::sched;
 
 use alloc::boxed::Box;
 
-pub enum ProcessResult<'c> {
-    Success(Continuation<'c>),
-    Error(Continuation<'c>),
+pub enum ProcessResult {
+    Success(Continuation),
+    Error(Continuation),
     Done,
 }
 
 /// Represents a single Process in the system
-pub struct Continuation<'c> {
-    routine: Box<'c + FnOnce() -> ProcessResult<'c>>, // TODO: this is not a great design... we need to keep this continuation around so that the next continuation can access it's variables, but that means that we can never garbage collect anything...
+pub struct Continuation {
+    routine: Box<FnOnce() -> ProcessResult>,
 }
 
-impl<'ct> Continuation<'ct> {
+impl Continuation {
     /// Create a new `Process` struct whose entry point is the `main_fn` function
-    pub fn new<'c, F>(routine: F) -> Continuation<'c>
+    pub fn new<F>(routine: F) -> Continuation
     where
-        F: 'c + FnOnce() -> ProcessResult<'c>,
+        F: 'static + FnOnce() -> ProcessResult,
     {
         Continuation {
             routine: Box::new(routine),
@@ -41,15 +41,20 @@ impl<'ct> Continuation<'ct> {
             ProcessResult::Done => sched::idle(),
         }
 
+        // TODO: do any necessary cleanup here
+
+        // Drop the current continuation
+        drop(self);
+
         // cede control to the scheduler
         sched::sched();
     }
 }
 
 /// Initialize the process/scheduling subsystem with the initial continuation.
-pub fn init<'c, F>(init: F)
+pub fn init<F>(init: F)
 where
-    F: 'static + FnOnce() -> ProcessResult<'c>,
+    F: 'static + FnOnce() -> ProcessResult,
 {
     sched::init(init)
 }
