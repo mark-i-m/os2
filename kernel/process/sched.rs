@@ -15,7 +15,7 @@ struct Scheduler {
 /// Initialize the scheduler
 pub fn init<F>(init: F)
 where
-    F: 'static + FnOnce() -> ProcessResult,
+    F: 'static + Send + FnMut() -> ProcessResult,
 {
     let mut s = scheduler.lock();
 
@@ -35,6 +35,14 @@ where
 /// complete. This should be called after all clean up has been completed. If no next task exists,
 /// the idle continuation is used.
 pub fn sched() -> ! {
+    // TODO: get clean stack
+
+    // TODO: set up clean stack
+
+    // TODO: switch to clean stack
+
+    // TODO: clean old stack
+
     // get the next task
     let next = if let Some(next) = scheduler.lock().as_mut().unwrap().todo.pop() {
         next
@@ -42,6 +50,7 @@ pub fn sched() -> ! {
         Continuation::new(|| sched()) // idle
     };
 
+    // run the task
     next.run();
 }
 

@@ -15,25 +15,25 @@ pub enum ProcessResult {
 
 /// Represents a single Process in the system
 pub struct Continuation {
-    routine: Box<FnOnce() -> ProcessResult>,
+    routine: Option<Box<FnMut() -> ProcessResult + Send>>,
 }
 
 impl Continuation {
     /// Create a new `Process` struct whose entry point is the `main_fn` function
     pub fn new<F>(routine: F) -> Continuation
     where
-        F: 'static + FnOnce() -> ProcessResult,
+        F: 'static + Send + FnMut() -> ProcessResult,
     {
         Continuation {
-            routine: Box::new(routine),
+            routine: Some(Box::new(routine)),
         }
     }
 
     /// Execute this continuation. Enqueue any resulting continuation in the scheduler. Then, cede
     /// control to the scheduler.
-    pub fn run(self) -> ! {
+    pub fn run(mut self) -> ! {
         // run this continuation, and enqueue the result
-        match (self.routine)() {
+        match (self.routine.take().unwrap())() {
             // if we have a continuation, run that
             ProcessResult::Success(cont) | ProcessResult::Error(cont) => sched::enqueue(cont),
 
@@ -42,6 +42,7 @@ impl Continuation {
         }
 
         // TODO: do any necessary cleanup here
+        // NOTE: we cannot cleanup anything that we are currently using
 
         // Drop the current continuation
         drop(self);
@@ -54,7 +55,7 @@ impl Continuation {
 /// Initialize the process/scheduling subsystem with the initial continuation.
 pub fn init<F>(init: F)
 where
-    F: 'static + FnOnce() -> ProcessResult,
+    F: 'static + Send + FnMut() -> ProcessResult,
 {
     sched::init(init)
 }
