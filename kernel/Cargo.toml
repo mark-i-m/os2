@@ -6,6 +6,7 @@ authors = ["mark <mmansi@utexas.edu>"]
 [dependencies]
 rlibc = "1.0.0"
 spin = "0.4.8"
+smallheap = { git = "https://github.com/mark-i-m/smallheap", features = ["no_std"] }
 
 [lib]
 name = "kernel"

@@ -1,4 +1,4 @@
-#![feature(lang_items, asm, start, const_fn, naked_functions, alloc)]
+#![feature(lang_items, asm, start, const_fn, naked_functions, alloc, global_allocator)]
 // Compile without libstd
 #![no_std]
 #![crate_type = "staticlib"]
@@ -7,6 +7,7 @@
 extern crate alloc;
 extern crate rlibc;
 extern crate spin;
+extern crate smallheap;
 
 #[macro_use]
 mod debug;
@@ -18,6 +19,10 @@ mod memory;
 mod process;
 
 use process::ProcessResult;
+
+/// The global allocator
+#[global_allocator]
+static mut ALLOCATOR: memory::KernelAllocator = memory::KernelAllocator::new();
 
 /// This is the entry point to the kernel. It is the first rust code that runs.
 #[no_mangle]

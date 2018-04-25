@@ -1,5 +1,10 @@
+
+pub use self::heap::KernelAllocator;
+
 use interrupts::add_trap_handler;
 use machine::page_fault_handler;
+
+mod heap;
 
 /// Initialize memory-related subsystems
 pub fn init() {
