@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = ["mark <mmansi@utexas.edu>"]
 
 [dependencies]
-rlibc = "*"
-spin = "0.4.5"
+rlibc = "1.0.0"
+spin = "0.4.8"
 
 [lib]
 name = "kernel"
