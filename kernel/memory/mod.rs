@@ -1,4 +1,3 @@
-
 use interrupts::add_trap_handler;
 use machine::page_fault_handler;
 

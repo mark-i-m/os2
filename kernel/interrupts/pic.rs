@@ -1,7 +1,7 @@
 //! A module for programmable interrupt controller
 
-use machine::*;
 use super::idt::add_interrupt_handler;
+use machine::*;
 
 /// Command port for PIC1
 const C1: u16 = 0x20;
@@ -11,7 +11,6 @@ const D1: u16 = 0x21;
 
 /// Command port for PIC2
 const C2: u16 = 0xA0;
-
 
 /// Data port for PIC2
 const D2: u16 = 0xA1;

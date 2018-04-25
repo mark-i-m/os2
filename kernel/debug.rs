@@ -2,7 +2,7 @@
 //!
 //! I borrowed it from krzysz00/rust-kernel/kernel/console.rs
 
-use core::fmt::{Write, Error};
+use core::fmt::{Error, Write};
 
 use machine::{inb, outb};
 

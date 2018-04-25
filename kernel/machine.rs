@@ -309,7 +309,7 @@ pub unsafe extern "C" fn irq15() {
     irq_common()
 }
 
-#[repr(C,packed)]
+#[repr(C, packed)]
 pub struct IrqContext {
     cr2: u64,
     r15: u64,
@@ -332,7 +332,6 @@ pub struct IrqContext {
 #[naked]
 #[inline]
 unsafe fn irq_common() -> ! {
-
     let irq: usize;
     let context_ptr: *mut IrqContext;
 

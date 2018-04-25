@@ -15,7 +15,7 @@ extern "C" {
     static kernelDataSeg: u16;
 }
 
-#[repr(C,packed)]
+#[repr(C, packed)]
 struct TSSDescriptor {
     f0: u32,
     f1: u32,
@@ -24,7 +24,7 @@ struct TSSDescriptor {
 }
 
 #[allow(dead_code)]
-#[repr(C,packed)]
+#[repr(C, packed)]
 struct TSS {
     entries: [u32; 25],
 }

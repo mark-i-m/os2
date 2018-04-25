@@ -1,12 +1,10 @@
-
 #![feature(lang_items, asm, start, const_fn, naked_functions)]
-
 // Compile without libstd
 #![no_std]
-
 #![crate_type = "staticlib"]
 #![crate_name = "kernel"]
 
+extern crate futures;
 extern crate rlibc;
 extern crate spin;
 
@@ -15,11 +13,11 @@ mod debug;
 mod bare_bones;
 mod machine;
 
-mod process;
 mod interrupts;
 mod memory;
+mod process;
 
-use process::{Process, main_fn_init};
+use process::{main_fn_init, Process};
 
 /// This is the entry point to the kernel. It is the first rust code that runs.
 #[no_mangle]

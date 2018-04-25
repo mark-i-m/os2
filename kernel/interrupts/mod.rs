@@ -1,8 +1,8 @@
 //! This module contains everything needed for interrupts
 
 pub use self::idt::add_trap_handler;
-pub use self::tss::rsp0;
 pub use self::tss::init as tss_init;
+pub use self::tss::rsp0;
 
 pub mod pic;
 

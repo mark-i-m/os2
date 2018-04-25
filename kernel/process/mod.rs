@@ -1,7 +1,7 @@
 //! Module for all things processes
 
 use core::cell::Cell;
-use core::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use spin::Mutex;
 
@@ -12,7 +12,6 @@ static CURRENT_PROCESS: Mutex<Cell<Option<Process>>> = Mutex::new(Cell::new(None
 
 /// The next PID
 static NEXT_PID: AtomicUsize = ATOMIC_USIZE_INIT;
-
 
 /// Represents a single Process in the system
 pub struct Process {
