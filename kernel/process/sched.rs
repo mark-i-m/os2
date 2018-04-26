@@ -23,12 +23,7 @@ where
     *s = Some(Scheduler { todo: Vec::new() });
 
     // Add `init` to the scheduler queue
-    SCHEDULER
-        .lock()
-        .as_mut()
-        .unwrap()
-        .todo
-        .push(Continuation::new(init));
+    s.as_mut().unwrap().todo.push(Continuation::new(init));
 }
 
 /// Run the scheduler to choose a task. Then switch to that task, discarding the current task as
@@ -42,6 +37,8 @@ pub fn sched() -> ! {
     // TODO: switch to clean stack
 
     // TODO: clean old stack
+
+    panic!("hehehe");
 
     // get the next task
     let next = if let Some(next) = SCHEDULER.lock().as_mut().unwrap().todo.pop() {
