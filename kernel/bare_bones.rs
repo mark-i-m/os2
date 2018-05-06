@@ -4,7 +4,7 @@
 
 #![allow(private_no_mangle_fns)]
 
-use core::fmt;
+use core::fmt::{Arguments, Write};
 
 use debug::Debug;
 use machine::cli;
@@ -17,13 +17,20 @@ pub fn eh_personality() {}
 /// This function is used by `panic!` to display an error message.
 #[lang = "panic_fmt"]
 #[no_mangle]
-pub fn rust_begin_unwind(args: fmt::Arguments, file: &'static str, line: u32) -> ! {
-    use core::fmt::Write;
+pub extern "C" fn rust_begin_panic(
+    args: Arguments,
+    file: &'static str,
+    line: u32,
+    column: u32,
+) -> ! {
     unsafe {
         cli();
     } // we should no be interrupting any more
-    printk!("\nPanic at {}:{}: ", file, line);
+
+    printk!("\n========{{ PANIC }}========\n");
+    printk!("{}:{}:{}\n", file, line, column);
+    printk!("...........................\n");
     let _ = Debug.write_fmt(args);
-    printk!("\n");
+    printk!("\n===========================\n");
     loop {}
 }

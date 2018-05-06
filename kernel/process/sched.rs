@@ -148,8 +148,7 @@ pub fn enqueue(cont: Continuation) {
 /// Returns the idle continuation.
 pub fn make_idle_cont() -> Continuation {
     Continuation::new(|| {
-        printk!("idle forever. Meh...");
-        loop {}
+        panic!("idle");
     })
 }
 

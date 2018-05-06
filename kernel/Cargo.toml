@@ -14,7 +14,7 @@ path = "lib.rs"
 crate-type = ["staticlib"]
 
 [profile.dev]
-panic = "unwind"
+panic = "abort"
 
 [profile.release]
-panic = "unwind"
+panic = "abort"
