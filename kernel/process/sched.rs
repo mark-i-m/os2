@@ -1,10 +1,12 @@
 //! The scheduler
 
-use alloc::{boxed::Box, BTreeMap, Vec};
+use alloc::{boxed::Box, BTreeMap};
 
 use core::{borrow::Borrow, mem};
 
 use spin::Mutex;
+
+use interrupts::get_time;
 
 use super::{Continuation, Event, EventKind, TaskResult};
 
@@ -19,11 +21,6 @@ struct Scheduler {
     /// The next continuation to be run. Notice that since each task is single threaded, there can
     /// be at most one.
     next: Option<(EventKind, Continuation)>,
-
-    // TODO: how to access this from trap/interrupt handlers without breaking Lock? Maybe some sort
-    // of RCU?
-    /// The events that have occurred and have not been consumed, indexed by event kind.
-    events: BTreeMap<EventKind, Vec<Event>>,
 
     // Because every core is single-threaded, we only need one stack. After a task executes, we can
     // just clean it up and reuse it. However, to make life a bit easier, we just allocate two
@@ -47,24 +44,21 @@ impl Scheduler {
         // There is a continuation, but is it ready?
         let desired_eventkind = self.next.as_ref().unwrap().0;
 
-        // Not waiting? Great!
-        if desired_eventkind == EventKind::Now {
-            return Some((Event::Now, self.next.take().unwrap().1));
-        }
+        // Depending on the type of event, we do different things to determine if it is ready
+        match desired_eventkind {
+            // Not waiting? Great!
+            EventKind::Now => Some((Event::Now, self.next.take().unwrap().1)),
 
-        // Other types of events: look through events
-        let events = self.events.get_mut(&desired_eventkind);
-        if let Some(events) = events {
-            // Remove the oldest event if there is one
-            if let Some(event) = events.pop() {
-                Some((event, self.next.take().unwrap().1))
+            // Timer events? Is the requested time here?
+            EventKind::Until(time) => if get_time() >= time {
+                // ready!
+                Some((Event::Timer, self.next.take().unwrap().1))
             } else {
-                // No events of the right kind... not ready
                 None
-            }
-        } else {
-            // No events of the right kind... not ready
-            None
+            },
+
+            // Waiting for kbd input?
+            EventKind::Keyboard => unimplemented!(), // TODO
         }
     }
 
@@ -117,7 +111,6 @@ where
     // Create the scheduler
     *s = Some(Scheduler {
         next: Some((EventKind::Now, Continuation::new(init))),
-        events: BTreeMap::new(),
         current_stack: Stack::new(),
         clean_stack: Stack::new(),
     });
