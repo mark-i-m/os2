@@ -77,6 +77,10 @@ pub fn kernel_main() -> ! {
 
     // We can turn on interrupts now.
     unsafe {
+        asm!("int3");
+
+        loop {}
+
         interrupts::enable();
     }
 

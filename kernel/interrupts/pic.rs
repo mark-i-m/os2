@@ -1,6 +1,8 @@
 //! A module for programmable interrupt controller
 
-use x86_64::{instructions::port::Port, structures::idt::ExceptionStackFrame, PrivilegeLevel};
+use x86_64::{instructions::port::Port,
+             structures::idt::{ExceptionStackFrame, Idt},
+             PrivilegeLevel};
 
 use time; // the most epic import statement ever written!
 
@@ -49,6 +51,11 @@ pub fn init() {
 
     // Add some interrupt handlers
     let idt_mut = unsafe { &mut idt };
+
+    // Clear the IDT (being careful not to cause an exception!)
+    *idt_mut = Idt::new();
+
+    // Set up basic interrupts
     idt_mut.interrupts[0x0].set_handler_fn(irq_0);
     idt_mut.interrupts[0x1].set_handler_fn(irq_1);
     idt_mut.interrupts[0x2].set_handler_fn(irq_2);
@@ -65,6 +72,9 @@ pub fn init() {
     idt_mut.interrupts[0xd].set_handler_fn(irq_d);
     idt_mut.interrupts[0xe].set_handler_fn(irq_e);
     idt_mut.interrupts[0xf].set_handler_fn(irq_f);
+
+    // Good for debugging
+    idt_mut.breakpoint.set_handler_fn(breakpoint_handler);
 }
 
 /// End of interrupt: send the next irq, but interrupts still disabled
@@ -187,4 +197,9 @@ extern "x86-interrupt" fn irq_e(esf: &mut ExceptionStackFrame) {
 
 extern "x86-interrupt" fn irq_f(esf: &mut ExceptionStackFrame) {
     pic_irq(0xf, esf);
+}
+
+/// Handle a breakpoint exception
+extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame) {
+    panic!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
