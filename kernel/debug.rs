@@ -2,12 +2,13 @@
 //!
 //! I borrowed it from krzysz00/rust-kernel/kernel/console.rs
 
+use x86_64::instructions::port::Port;
+
 use core::fmt::{Error, Write};
 
-use machine::{inb, outb};
-
 /// Port to output to serial console
-const PORT: u16 = 0x3F8;
+const PORT_IN: Port<u8> = Port::new(0x3F8 + 5);
+const PORT_OUT: Port<u8> = Port::new(0x3F8);
 
 /// A struct to write data to the console port
 pub struct Debug;
@@ -17,8 +18,8 @@ impl Debug {
     pub fn write_bytes(&self, bytes: &[u8]) {
         for b in bytes {
             unsafe {
-                while inb(PORT + 5) & 0x20 == 0 {}
-                outb(PORT, *b);
+                while PORT_IN.read() & 0x20 == 0 {}
+                PORT_OUT.write(*b);
             }
         }
     }

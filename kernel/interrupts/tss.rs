@@ -5,8 +5,6 @@
 
 use core::mem;
 
-use machine::ltr;
-
 static mut TSS64: TSS = TSS::new();
 
 extern "C" {
@@ -102,4 +100,21 @@ pub fn rsp0(v: usize) {
     unsafe {
         TSS64.rsp0(v);
     }
+}
+
+unsafe fn ltr(tr: usize) {
+    /*
+    mov 4(%esp),%eax
+    ltr %ax
+    ret
+    */
+
+    asm!{
+        "movq $0, %rax
+        ltr %ax "
+        : /* No outputs */
+        : "r"(tr)
+        : "rax"
+        : "volatile"
+    };
 }

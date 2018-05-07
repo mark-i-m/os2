@@ -3,11 +3,6 @@ name = "kernel"
 version = "0.1.0"
 authors = ["mark <mmansi@utexas.edu>"]
 
-[dependencies]
-rlibc = "1.0.0"
-spin = "0.4.8"
-smallheap = { git = "https://github.com/mark-i-m/smallheap", features = ["no_std"] }
-
 [lib]
 name = "kernel"
 path = "lib.rs"
@@ -18,3 +13,9 @@ panic = "abort"
 
 [profile.release]
 panic = "abort"
+
+[dependencies]
+rlibc = "1.0.0"
+spin = "0.4.8"
+smallheap = { git = "https://github.com/mark-i-m/smallheap", features = ["no_std"] }
+x86_64 = "0.2.0-alpha-019"

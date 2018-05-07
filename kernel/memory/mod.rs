@@ -1,7 +1,10 @@
-pub use self::heap::KernelAllocator;
+//! The memory management subsystem.
 
-use interrupts::add_trap_handler;
-use machine::page_fault_handler;
+use x86_64::structures::idt::{ExceptionStackFrame, PageFaultErrorCode};
+
+use interrupts::idt;
+
+pub use self::heap::KernelAllocator;
 
 mod heap;
 
@@ -11,11 +14,28 @@ pub fn init(allocator: &mut KernelAllocator, kheap_start: usize, kheap_size: usi
     heap::init(allocator, kheap_start, kheap_size);
 
     // Register page fault handler
-    add_trap_handler(14, page_fault_handler, 0);
+    unsafe {
+        idt.page_fault.set_handler_fn(handle_page_fault);
+    }
 }
 
-/// Placeholder... TODO
-pub fn handle_page_fault(addr: usize) {
+/// Handle a page fault
+extern "x86-interrupt" fn handle_page_fault(
+    _esf: &mut ExceptionStackFrame,
+    _error: PageFaultErrorCode,
+) {
+    // Read CR2 to get the page fault address
+    let cr2: usize;
+    unsafe {
+        asm!{
+            "movq %cr2, $0"
+             : "=r"(cr2)
+             : /* no input */
+             : /* no clobbers */
+             : "volatile"
+        };
+    }
+
     // TODO
-    panic!("Page fault at {:x}", addr);
+    panic!("Page fault at {:x}", cr2);
 }

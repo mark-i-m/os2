@@ -1,38 +1,76 @@
 //! This module contains everything needed for interrupts
 
-pub use self::idt::add_trap_handler;
-pub use self::pic::pic_irq;
+use x86_64::structures::idt::{ExceptionStackFrame, Idt};
+
 pub use self::pit::HZ as PIT_HZ;
 pub use self::tss::init as tss_init;
 pub use self::tss::rsp0;
 
-use machine::gpf_handler;
-
 mod pic;
 mod pit;
 
-mod idt;
 mod tss;
+
+/// Imports that are defined at boot
+#[allow(improper_ctypes)]
+extern "C" {
+    pub static mut idt: Idt;
+}
 
 /// Initialize interrupts (and exceptions).
 pub fn init() {
+    // Initialize the Programmable Interrupt Controler
     pic::init();
-    pit::init();
-    gfp_init();
-}
 
-/// Initialize the General Protection Fault handler.
-fn gfp_init() {
-    add_trap_handler(13, gpf_handler, 0);
+    // Add a handler for GPF
+    unsafe {
+        idt.general_protection_fault.set_handler_fn(handle_gpf);
+    }
+
+    // Initialize the Programmable Interrupt Timer
+    pit::init();
 }
 
 /// Handle a GPF fault
-pub fn handle_gpf(error: usize, cs: usize, rip: usize, flags: usize) {
+extern "x86-interrupt" fn handle_gpf(esf: &mut ExceptionStackFrame, error: u64) {
     panic!(
         "General Protection Fault
             error: {:x}\n
             CS:RIP: {:x}:{:x}\n
             flags: {:b}",
-        error, cs, rip, flags
+        error,
+        esf.code_segment,
+        esf.instruction_pointer.as_u64(),
+        esf.cpu_flags
     );
+}
+
+/// Disable interrupts
+pub unsafe fn disable() {
+    /*
+    cli
+    */
+
+    asm!{
+        "cli"
+        : /* No outputs */
+        : /* No inputs*/
+        : /* No clobbers */
+        : /* No options */
+    };
+}
+
+/// Enable interrupts
+pub unsafe fn enable() {
+    /*
+    sti
+    */
+
+    asm!{
+        "sti"
+        : /* No outputs */
+        : /* No inputs*/
+        : /* No clobbers */
+        : /* No options */
+    };
 }

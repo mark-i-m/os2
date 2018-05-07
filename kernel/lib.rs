@@ -1,6 +1,6 @@
 #![feature(
     lang_items, asm, start, const_fn, naked_functions, alloc, global_allocator, allocator_api,
-    box_syntax
+    box_syntax, abi_x86_interrupt
 )]
 // Compile without libstd
 #![no_std]
@@ -11,12 +11,11 @@ extern crate alloc;
 extern crate rlibc;
 extern crate smallheap;
 extern crate spin;
+extern crate x86_64;
 
 #[macro_use]
 mod debug;
 mod bare_bones;
-mod machine;
-
 mod continuation;
 mod interrupts;
 mod memory;
@@ -40,7 +39,7 @@ pub fn kernel_main() -> ! {
 
     // Make sure interrupts are off
     unsafe {
-        machine::cli();
+        interrupts::disable();
     }
 
     // Let everyone know we are here
@@ -80,8 +79,7 @@ pub fn kernel_main() -> ! {
 
     // We can turn on interrupts now.
     unsafe {
-        machine::sti(); //TODO
-        machine::cli(); //TODO
+        //interrupts::enable();//TODO
     }
 
     // Start the first task

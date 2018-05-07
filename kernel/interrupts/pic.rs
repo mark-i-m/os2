@@ -1,65 +1,134 @@
 //! A module for programmable interrupt controller
 
-use machine::*;
+use x86_64::{instructions::port::Port, structures::idt::ExceptionStackFrame, PrivilegeLevel};
+
 use time; // the most epic import statement ever written!
 
-use super::idt::add_interrupt_handler;
+use super::idt;
 
 /// Command port for PIC1
-const C1: u16 = 0x20;
+const C1: Port<u8> = Port::new(0x20);
 
 /// Data port for PIC1
-const D1: u16 = 0x21;
+const D1: Port<u8> = Port::new(0x21);
 
 /// Command port for PIC2
-const C2: u16 = 0xA0;
+const C2: Port<u8> = Port::new(0xA0);
 
 /// Data port for PIC2
-const D2: u16 = 0xA1;
+const D2: Port<u8> = Port::new(0xA1);
 
-/// First IRQ number allowed for registering handlers
+/// The first 0x30 entries of the IDT are reserved for traps and exceptions. So the first
+/// _interrupt_ is at vector 0x30.
 const FIRST_IDT: u8 = 0x30;
 
 /// Initialize the PIC, but leave interrupts disabled
 pub fn init() {
+    // Configure the PIC
     unsafe {
         // ICW1
-        outb(C1, 0x11); /* init with ICW4, not single */
-        outb(C2, 0x11); /* init with ICW4, not single */
+        C1.write(0x11); /* init with ICW4, not single */
+        C2.write(0x11); /* init with ICW4, not single */
 
         // ICW2
-        outb(D1, FIRST_IDT); /* IDT index for IRQ0 */
-        outb(D2, FIRST_IDT + 8); /* IDT index for IRQ8 */
+        D1.write(FIRST_IDT); /* IDT index for IRQ0 */
+        D2.write(FIRST_IDT + 8); /* IDT index for IRQ8 */
 
         // ICW3
-        outb(D1, 1 << 2); /* tells master that the slave is at IRQ2 */
-        outb(D2, 2); /* tells salve that it's connected at IRQ2 */
+        D1.write(1 << 2); /* tells master that the slave is at IRQ2 */
+        D2.write(2); /* tells salve that it's connected at IRQ2 */
 
         // ICW4
-        outb(D1, 1); /* 8086 mode */
-        outb(D2, 1); /* 8086 mode */
+        D1.write(1); /* 8086 mode */
+        D2.write(1); /* 8086 mode */
 
         // enable all
-        outb(D1, 0);
-        outb(D2, 0);
+        D1.write(0);
+        D2.write(0);
+    };
 
-        add_interrupt_handler(FIRST_IDT + 0, irq0);
-        add_interrupt_handler(FIRST_IDT + 1, irq1);
-        add_interrupt_handler(FIRST_IDT + 2, irq2);
-        add_interrupt_handler(FIRST_IDT + 3, irq3);
-        add_interrupt_handler(FIRST_IDT + 4, irq4);
-        add_interrupt_handler(FIRST_IDT + 5, irq5);
-        add_interrupt_handler(FIRST_IDT + 6, irq6);
-        add_interrupt_handler(FIRST_IDT + 7, irq7);
-        add_interrupt_handler(FIRST_IDT + 8, irq8);
-        add_interrupt_handler(FIRST_IDT + 9, irq9);
-        add_interrupt_handler(FIRST_IDT + 10, irq10);
-        add_interrupt_handler(FIRST_IDT + 11, irq11);
-        add_interrupt_handler(FIRST_IDT + 12, irq12);
-        add_interrupt_handler(FIRST_IDT + 13, irq13);
-        add_interrupt_handler(FIRST_IDT + 14, irq14);
-        add_interrupt_handler(FIRST_IDT + 15, irq15);
-    }
+    // Add some interrupt handlers
+    let idt_mut = unsafe { &mut idt };
+    idt_mut.interrupts[0x0]
+        .set_handler_fn(irq_0)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0x1]
+        .set_handler_fn(irq_1)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0x2]
+        .set_handler_fn(irq_2)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0x3]
+        .set_handler_fn(irq_3)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0x4]
+        .set_handler_fn(irq_4)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0x5]
+        .set_handler_fn(irq_5)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0x6]
+        .set_handler_fn(irq_6)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0x7]
+        .set_handler_fn(irq_7)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0x8]
+        .set_handler_fn(irq_8)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0x9]
+        .set_handler_fn(irq_9)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0xa]
+        .set_handler_fn(irq_a)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0xb]
+        .set_handler_fn(irq_b)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0xc]
+        .set_handler_fn(irq_c)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0xd]
+        .set_handler_fn(irq_d)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0xe]
+        .set_handler_fn(irq_e)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
+    idt_mut.interrupts[0xf]
+        .set_handler_fn(irq_f)
+        .set_present(true)
+        .disable_interrupts(true)
+        .set_privilege_level(PrivilegeLevel::Ring0);
 }
 
 /// End of interrupt: send the next irq, but interrupts still disabled
@@ -67,10 +136,10 @@ fn pic_eoi(irq: u8) {
     unsafe {
         if irq >= 8 {
             // let PIC2 know
-            outb(C2, 0x20);
+            C2.write(0x20);
         }
         // we always let PIC1 know because PIC2 is routed though PIC1
-        outb(C1, 0x20);
+        C1.write(0x20);
     }
 }
 
@@ -80,7 +149,7 @@ fn pic_eoi(irq: u8) {
 ///
 /// Note that this should _not_ be confused with _exceptions_. For more info on x86 exceptions, see
 /// https://wiki.osdev.org/Exceptions
-pub fn pic_irq(irq: usize, _: &mut IrqContext) {
+fn pic_irq(irq: usize, _: &mut ExceptionStackFrame) {
     // execute handler
     match irq {
         // PIT interrupts
@@ -103,7 +172,7 @@ pub fn pic_irq(irq: usize, _: &mut IrqContext) {
         // Other (unknown) interrupts
         _ => {
             unsafe {
-                cli();
+                super::disable();
             }
             panic!("unknown interrupt {}\n", irq)
         }
@@ -111,4 +180,75 @@ pub fn pic_irq(irq: usize, _: &mut IrqContext) {
 
     // the PIC can deliver the next interrupt, but interrupts are still disabled
     pic_eoi(irq as u8);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// The interrupt handlers
+//
+// These are called by the hardware. They simply call `pic_irq`, which does the
+// hard work for them.
+////////////////////////////////////////////////////////////////////////////////
+
+extern "x86-interrupt" fn irq_0(esf: &mut ExceptionStackFrame) {
+    pic_irq(0, esf);
+}
+
+extern "x86-interrupt" fn irq_1(esf: &mut ExceptionStackFrame) {
+    pic_irq(1, esf);
+}
+
+extern "x86-interrupt" fn irq_2(esf: &mut ExceptionStackFrame) {
+    pic_irq(2, esf);
+}
+
+extern "x86-interrupt" fn irq_3(esf: &mut ExceptionStackFrame) {
+    pic_irq(3, esf);
+}
+
+extern "x86-interrupt" fn irq_4(esf: &mut ExceptionStackFrame) {
+    pic_irq(4, esf);
+}
+
+extern "x86-interrupt" fn irq_5(esf: &mut ExceptionStackFrame) {
+    pic_irq(5, esf);
+}
+
+extern "x86-interrupt" fn irq_6(esf: &mut ExceptionStackFrame) {
+    pic_irq(6, esf);
+}
+
+extern "x86-interrupt" fn irq_7(esf: &mut ExceptionStackFrame) {
+    pic_irq(7, esf);
+}
+
+extern "x86-interrupt" fn irq_8(esf: &mut ExceptionStackFrame) {
+    pic_irq(8, esf);
+}
+
+extern "x86-interrupt" fn irq_9(esf: &mut ExceptionStackFrame) {
+    pic_irq(9, esf);
+}
+
+extern "x86-interrupt" fn irq_a(esf: &mut ExceptionStackFrame) {
+    pic_irq(0xa, esf);
+}
+
+extern "x86-interrupt" fn irq_b(esf: &mut ExceptionStackFrame) {
+    pic_irq(0xb, esf);
+}
+
+extern "x86-interrupt" fn irq_c(esf: &mut ExceptionStackFrame) {
+    pic_irq(0xc, esf);
+}
+
+extern "x86-interrupt" fn irq_d(esf: &mut ExceptionStackFrame) {
+    pic_irq(0xd, esf);
+}
+
+extern "x86-interrupt" fn irq_e(esf: &mut ExceptionStackFrame) {
+    pic_irq(0xe, esf);
+}
+
+extern "x86-interrupt" fn irq_f(esf: &mut ExceptionStackFrame) {
+    pic_irq(0xf, esf);
 }

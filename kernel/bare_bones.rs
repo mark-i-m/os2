@@ -7,7 +7,7 @@
 use core::fmt::{Arguments, Write};
 
 use debug::Debug;
-use machine::cli;
+use interrupts;
 
 // For bare-bones rust
 #[lang = "eh_personality"]
@@ -24,7 +24,7 @@ pub extern "C" fn rust_begin_panic(
     column: u32,
 ) -> ! {
     unsafe {
-        cli();
+        interrupts::disable();
     } // we should no be interrupting any more
 
     printk!("\n========{{ PANIC }}========\n");
