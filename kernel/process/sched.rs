@@ -1,14 +1,14 @@
 //! The scheduler
 
-use alloc::{boxed::Box, BTreeMap};
+use alloc::boxed::Box;
 
 use core::{borrow::Borrow, mem};
 
 use spin::Mutex;
 
-use interrupts::get_time;
+use time::SysTime;
 
-use super::{Continuation, Event, EventKind, TaskResult};
+use continuation::{ContResult, Continuation, Event, EventKind};
 
 /// The size of a stack in words
 const STACK_WORDS: usize = 1 << 12; // 16KB
@@ -50,7 +50,7 @@ impl Scheduler {
             EventKind::Now => Some((Event::Now, self.next.take().unwrap().1)),
 
             // Timer events? Is the requested time here?
-            EventKind::Until(time) => if get_time() >= time {
+            EventKind::Until(time) => if SysTime::now() >= time {
                 // ready!
                 Some((Event::Timer, self.next.take().unwrap().1))
             } else {
@@ -104,7 +104,7 @@ impl Stack {
 /// Initialize the scheduler
 pub fn init<F>(init: F)
 where
-    F: 'static + Send + FnMut(Event) -> TaskResult,
+    F: 'static + Send + FnMut(Event) -> ContResult,
 {
     let mut s = SCHEDULER.lock();
 
@@ -178,7 +178,7 @@ unsafe fn sched_part_3() -> ! {
     };
 
     // run the task
-    next.run(event);
+    next.run(event)
 }
 
 /// Enqueue the given continuation in the scheduler.

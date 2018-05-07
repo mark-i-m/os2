@@ -17,11 +17,13 @@ mod debug;
 mod bare_bones;
 mod machine;
 
+mod continuation;
 mod interrupts;
 mod memory;
 mod process;
+mod time;
 
-use process::TaskResult;
+use continuation::ContResult;
 
 /// The global allocator
 #[global_allocator]
@@ -63,11 +65,12 @@ pub fn kernel_main() -> ! {
     printk!("Taskes");
     process::init(|_| {
         printk!("Init task running!");
-        TaskResult::Done
+        ContResult::Done
     });
     printk!(" ✔\n");
 
-    process::sched();
+    // Start the first task
+    process::start();
 
     // We never return...
 }

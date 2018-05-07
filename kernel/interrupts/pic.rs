@@ -1,9 +1,9 @@
 //! A module for programmable interrupt controller
 
-use core::sync::atomic::Ordering;
+use machine::*;
+use time; // the most epic import statement ever written!
 
 use super::idt::add_interrupt_handler;
-use machine::*;
 
 /// Command port for PIC1
 const C1: u16 = 0x20;
@@ -78,16 +78,29 @@ fn pic_eoi(irq: u8) {
 pub fn pic_irq(irq: usize, _: &mut IrqContext) {
     // execute handler
     match irq {
-        13 => {
+        // PIT interrupts
+        0 => {
             // tick the clock
-            super::TICKS.fetch_add(1, Ordering::Relaxed);
-        } // Processor, FPU
-        15 => {} // IDE
+            time::tick();
+        }
+
+        // Keyboard interrupts
+        1 => {
+            unimplemented!();
+        }
+
+        // Processor and FPU interrupts
+        13 => {}
+
+        // IDE interrupts
+        15 => {}
+
+        // Other (unknown) interrupts
         _ => {
             unsafe {
                 cli();
             }
-            panic!("interrupt {}\n", irq)
+            panic!("unknown interrupt {}\n", irq)
         }
     }
 
