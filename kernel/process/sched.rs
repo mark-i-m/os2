@@ -1,6 +1,6 @@
 //! The scheduler
 
-use alloc::{boxed::Box, Vec};
+use alloc::boxed::Box;
 
 use core::{borrow::Borrow, mem};
 
@@ -16,8 +16,9 @@ static SCHEDULER: Mutex<Option<Scheduler>> = Mutex::new(None);
 
 /// The kernel task scheduler
 struct Scheduler {
-    /// A list of tasks to be executed.
-    todo: Vec<Continuation>,
+    /// The next continuation to be run. Notice that since each task is single threaded, there can
+    /// be at most one.
+    next: Option<Continuation>,
 
     // Because every core is single-threaded, we only need one stack. After a task executes, we can
     // just clean it up and reuse it. However, to make life a bit easier, we just allocate two
@@ -66,13 +67,10 @@ where
 
     // Create the scheduler
     *s = Some(Scheduler {
-        todo: Vec::new(),
+        next: Some(Continuation::new(init)),
         current_stack: Stack::new(),
         clean_stack: Stack::new(),
     });
-
-    // Add `init` to the scheduler queue
-    s.as_mut().unwrap().todo.push(Continuation::new(init));
 }
 
 /// Run the scheduler to choose a task. Then switch to that task, discarding the current task as
@@ -127,7 +125,7 @@ unsafe fn sched_part_3() -> ! {
         s.clean_stack.clear();
 
         // get the next task
-        if let Some(next) = s.todo.pop() {
+        if let Some(next) = s.next.take() {
             next
         } else {
             make_idle_cont()
@@ -142,7 +140,10 @@ unsafe fn sched_part_3() -> ! {
 
 /// Enqueue the given continuation in the scheduler.
 pub fn enqueue(cont: Continuation) {
-    SCHEDULER.lock().as_mut().unwrap().todo.push(cont);
+    let mut s = SCHEDULER.lock();
+    let next = &mut s.as_mut().unwrap().next;
+    assert!(next.is_none());
+    *next = Some(cont);
 }
 
 /// Returns the idle continuation.

@@ -1,5 +1,7 @@
 //! A module for programmable interrupt controller
 
+use core::sync::atomic::Ordering;
+
 use super::idt::add_interrupt_handler;
 use machine::*;
 
@@ -76,7 +78,10 @@ fn pic_eoi(irq: u8) {
 pub fn pic_irq(irq: usize, _: &mut IrqContext) {
     // execute handler
     match irq {
-        13 => {} // Processor, FPU
+        13 => {
+            // tick the clock
+            super::TICKS.fetch_add(1, Ordering::Relaxed);
+        } // Processor, FPU
         15 => {} // IDE
         _ => {
             unsafe {
