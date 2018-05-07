@@ -63,7 +63,7 @@ pub fn kernel_main() -> ! {
 
     // Create the init task
     printk!("Taskes");
-    let init = Continuation::new(|_| {
+    process::init(Continuation::new(|_| {
         printk!("Init task running!");
         ContResult::Success(
             EventKind::Until(SysTime::now().after(4)),
@@ -72,14 +72,12 @@ pub fn kernel_main() -> ! {
                 ContResult::Done
             }),
         )
-    });
-
-    process::init(init);
+    }));
     printk!(" ✔\n");
 
     // We can turn on interrupts now.
     unsafe {
-        //interrupts::enable();//TODO
+        interrupts::enable();
     }
 
     // Start the first task
