@@ -2,7 +2,7 @@
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use interrupts::pit_freq;
+use interrupts::PIT_HZ;
 
 /// Counts interrupts. This can be used as a source of time.
 static TICKS: AtomicUsize = AtomicUsize::new(0);
@@ -33,7 +33,7 @@ impl SysTime {
 
     /// Get the time `secs` seconds after `self`.
     pub fn after(&self, secs: usize) -> Self {
-        SysTime(self.0 + secs * pit_freq())
+        SysTime(self.0 + secs * PIT_HZ)
     }
 }
 

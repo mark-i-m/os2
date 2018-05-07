@@ -1,10 +1,13 @@
 //! This module contains everything needed for interrupts
 
 pub use self::idt::add_trap_handler;
+pub use self::pic::pic_irq;
+pub use self::pit::HZ as PIT_HZ;
 pub use self::tss::init as tss_init;
 pub use self::tss::rsp0;
 
-pub mod pic;
+mod pic;
+mod pit;
 
 mod idt;
 mod tss;
@@ -12,10 +15,5 @@ mod tss;
 /// Initialize interrupts.
 pub fn init() {
     pic::init();
-}
-
-/// The number of timer interrupts per second.
-pub fn pit_freq() -> usize {
-    // TODO
-    unimplemented!();
+    pit::init();
 }

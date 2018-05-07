@@ -52,9 +52,9 @@ pub fn kernel_main() -> ! {
     printk!(" ✔\n");
 
     // Set up interrupt handling
-    printk!("Interrupts");
+    printk!("Interrupts...\n\t");
     interrupts::init();
-    printk!(" ✔\n");
+    printk!("Interrupts ✔\n");
 
     // Initialize memory
     // make the kernel heap 3MiB starting at 1MiB.
@@ -77,6 +77,11 @@ pub fn kernel_main() -> ! {
 
     process::init(init);
     printk!(" ✔\n");
+
+    // We can turn on interrupts now.
+    unsafe {
+        //machine::sti(); TODO
+    }
 
     // Start the first task
     process::start();

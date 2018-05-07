@@ -1,6 +1,6 @@
 //! A bunch of assembly-based utilities
 
-use interrupts::pic::pic_irq;
+use interrupts::pic_irq;
 
 /// a wrapper around inb
 pub unsafe fn inb(port: u16) -> u8 {
@@ -77,11 +77,61 @@ pub unsafe fn cli() {
     */
 
     asm!{
-        "cli "
+        "cli"
         : /* No outputs */
         : /* No inputs*/
         : /* No clobbers */
         : /* No options */
+    };
+}
+
+pub unsafe fn sti() {
+    /*
+    sti
+    */
+
+    asm!{
+        "sti"
+        : /* No outputs */
+        : /* No inputs*/
+        : /* No clobbers */
+        : /* No options */
+    };
+}
+
+/// Initialize the PIT with the given divide
+pub unsafe fn pit_do_init(divide: usize) {
+    /*
+	pushf			        # push IF
+	cli			            # disable interrupts
+	movb $0b00110100,%al	# 00 (channel 0)
+				            # 110 (lobyte/hibyte)
+				            # 100 (rate generator)
+	outb %al,$0x43		    # write command
+	movb 8(%esp),%al	    # divide
+	outb %al,$0x40
+	movb 9(%esp),%al
+	outb %al,$0x40
+	popf			        # pop IF
+    */
+
+    let first_byte = (divide & 0xFF) as u8;
+    let second_byte = ((divide & 0xFF00) >> 8) as u8;
+
+    asm!{
+        "pushf
+        cli
+        movb $$0b00110100,%al
+        outb %al,$$0x43
+        movb $0,%al
+        outb %al,$$0x40
+        movb $1,%al
+        outb %al,$$0x40
+        popf"
+    : /* No output */
+    : "r"(first_byte), "r"(second_byte)
+    : "rax"
+    : "volatile"
     };
 }
 

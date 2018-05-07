@@ -8,7 +8,7 @@ use spin::Mutex;
 
 use time::SysTime;
 
-use continuation::{ContResult, Continuation, Event, EventKind};
+use continuation::{Continuation, Event, EventKind};
 
 /// The size of a stack in words
 const STACK_WORDS: usize = 1 << 12; // 16KB

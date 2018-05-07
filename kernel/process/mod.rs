@@ -2,7 +2,7 @@
 
 pub mod sched;
 
-use continuation::{ContResult, Continuation, Event};
+use continuation::Continuation;
 
 /// Initialize the process/scheduling subsystem with the initial continuation.
 pub fn init(init: Continuation) {
