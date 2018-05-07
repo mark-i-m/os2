@@ -1,12 +1,12 @@
 //! The scheduler
 
-use alloc::boxed::Box;
+use alloc::{boxed::Box, BTreeMap, Vec};
 
 use core::{borrow::Borrow, mem};
 
 use spin::Mutex;
 
-use super::{Continuation, ProcessResult};
+use super::{Continuation, Event, EventKind, TaskResult};
 
 /// The size of a stack in words
 const STACK_WORDS: usize = 1 << 12; // 16KB
@@ -18,7 +18,12 @@ static SCHEDULER: Mutex<Option<Scheduler>> = Mutex::new(None);
 struct Scheduler {
     /// The next continuation to be run. Notice that since each task is single threaded, there can
     /// be at most one.
-    next: Option<Continuation>,
+    next: Option<(EventKind, Continuation)>,
+
+    // TODO: how to access this from trap/interrupt handlers without breaking Lock? Maybe some sort
+    // of RCU?
+    /// The events that have occurred and have not been consumed, indexed by event kind.
+    events: BTreeMap<EventKind, Vec<Event>>,
 
     // Because every core is single-threaded, we only need one stack. After a task executes, we can
     // just clean it up and reuse it. However, to make life a bit easier, we just allocate two
@@ -28,6 +33,50 @@ struct Scheduler {
 
     /// A clean stack for the next task
     clean_stack: Stack,
+}
+
+impl Scheduler {
+    /// Get the next continuation to run along with the `Event` that it was waiting for. If no
+    /// continuation exists or no continuation is ready, return None.
+    pub fn next(&mut self) -> Option<(Event, Continuation)> {
+        // No continuation
+        if self.next.is_none() {
+            return None;
+        }
+
+        // There is a continuation, but is it ready?
+        let desired_eventkind = self.next.as_ref().unwrap().0;
+
+        // Not waiting? Great!
+        if desired_eventkind == EventKind::Now {
+            return Some((Event::Now, self.next.take().unwrap().1));
+        }
+
+        // Other types of events: look through events
+        let events = self.events.get_mut(&desired_eventkind);
+        if let Some(events) = events {
+            // Remove the oldest event if there is one
+            if let Some(event) = events.pop() {
+                Some((event, self.next.take().unwrap().1))
+            } else {
+                // No events of the right kind... not ready
+                None
+            }
+        } else {
+            // No events of the right kind... not ready
+            None
+        }
+    }
+
+    /// Set the next continuation to run along with the event kind it is waiting for.
+    ///
+    /// # Panics
+    ///
+    /// If there is already a continuation scheduled.
+    pub fn set_next(&mut self, eventkind: EventKind, cont: Continuation) {
+        assert!(self.next.is_none());
+        self.next = Some((eventkind, cont));
+    }
 }
 
 /// An stack for execution of continuations
@@ -61,13 +110,14 @@ impl Stack {
 /// Initialize the scheduler
 pub fn init<F>(init: F)
 where
-    F: 'static + Send + FnMut() -> ProcessResult,
+    F: 'static + Send + FnMut(Event) -> TaskResult,
 {
     let mut s = SCHEDULER.lock();
 
     // Create the scheduler
     *s = Some(Scheduler {
-        next: Some(Continuation::new(init)),
+        next: Some((EventKind::Now, Continuation::new(init))),
+        events: BTreeMap::new(),
         current_stack: Stack::new(),
         clean_stack: Stack::new(),
     });
@@ -116,7 +166,7 @@ unsafe fn sched_part_2_thunk(rsp: usize) -> ! {
 /// Now that we are running on the new stack, we can clean the old one. Then, switch to the next
 /// task and start running it.
 unsafe fn sched_part_3() -> ! {
-    let next = {
+    let (event, next) = {
         // Get the scheduler
         let mut s = SCHEDULER.lock();
         let s = s.as_mut().unwrap();
@@ -125,36 +175,34 @@ unsafe fn sched_part_3() -> ! {
         s.clean_stack.clear();
 
         // get the next task
-        if let Some(next) = s.next.take() {
+        if let Some(next) = s.next() {
             next
         } else {
-            make_idle_cont()
+            (Event::Now, make_idle_cont())
         }
 
         // Lock dropped, borrows end, etc. when we call `part_2_thunk`
     };
 
     // run the task
-    next.run();
+    next.run(event);
 }
 
 /// Enqueue the given continuation in the scheduler.
-pub fn enqueue(cont: Continuation) {
-    let mut s = SCHEDULER.lock();
-    let next = &mut s.as_mut().unwrap().next;
-    assert!(next.is_none());
-    *next = Some(cont);
+pub fn enqueue(eventkind: EventKind, cont: Continuation) {
+    SCHEDULER.lock().as_mut().unwrap().set_next(eventkind, cont);
 }
 
 /// Returns the idle continuation.
 pub fn make_idle_cont() -> Continuation {
-    Continuation::new(|| {
-        panic!("idle");
+    Continuation::new(|_| {
+        sched();
     })
 }
 
 /// Enqueue the idle continuation. This continuation just calls the scheduler to schedule something
 /// else if possible.
 pub fn idle() {
-    enqueue(make_idle_cont())
+    let cont = make_idle_cont();
+    enqueue(EventKind::Now, cont);
 }

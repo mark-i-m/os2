@@ -21,7 +21,7 @@ mod interrupts;
 mod memory;
 mod process;
 
-use process::ProcessResult;
+use process::TaskResult;
 
 /// The global allocator
 #[global_allocator]
@@ -59,11 +59,11 @@ pub fn kernel_main() -> ! {
     memory::init(unsafe { &mut ALLOCATOR }, 1 << 20, 1 << 20);
     printk!("Memory ✔\n");
 
-    // Create the init process
-    printk!("Processes");
-    process::init(|| {
-        printk!("Init!");
-        ProcessResult::Done
+    // Create the init task
+    printk!("Taskes");
+    process::init(|_| {
+        printk!("Init task running!");
+        TaskResult::Done
     });
     printk!(" ✔\n");
 

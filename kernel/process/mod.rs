@@ -2,28 +2,64 @@
 
 mod sched;
 
+use alloc::boxed::Box;
+
 // For use by `kernel_main` to start the first continuation
 pub use self::sched::sched;
 
-use alloc::boxed::Box;
+use interrupts::SysTime;
 
+/// Different kinds of events a continuation can wait for.
+#[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
+pub enum EventKind {
+    /// Wait for "now" to occur. i.e. don't wait for anything.
+    Now,
+
+    // TODO: implement this
+    /// Wait for keyboard input.
+    Keyboard,
+
+    // TODO: implement this
+    /// Wait for the system "clock" to have a given reading.
+    Until(SysTime),
+}
+
+/// The events corresponding to `EventKind`.
+#[derive(Copy, Clone)]
+pub enum Event {
+    /// Wow! It's now!
+    Now,
+
+    /// The given character has been typed
+    Keyboard(u8),
+
+    /// A timer has expired
+    Timer,
+}
+
+/// The possible results of running a continuation.
 #[allow(dead_code)]
-pub enum ProcessResult {
-    Success(Continuation),
+pub enum TaskResult {
+    /// The continuation suceeded and the next continuation and its precondition are given.
+    Success(EventKind, Continuation),
+
+    /// The Continuation failed and here is the continuation to handle the error.
     Error(Continuation),
+
+    /// The continuation suceeded and there is nothing left to be done.
     Done,
 }
 
-/// Represents a single Process in the system
+/// Represents a single Task in the system
 pub struct Continuation {
-    routine: Option<Box<FnMut() -> ProcessResult + Send>>,
+    routine: Option<Box<FnMut(Event) -> TaskResult + Send>>,
 }
 
 impl Continuation {
-    /// Create a new `Process` struct whose entry point is the `main_fn` function
+    /// Create a new `Task` struct whose entry point is the `main_fn` function
     pub fn new<F>(routine: F) -> Continuation
     where
-        F: 'static + Send + FnMut() -> ProcessResult,
+        F: 'static + Send + FnMut(Event) -> TaskResult,
     {
         Continuation {
             routine: Some(Box::new(routine)),
@@ -32,14 +68,17 @@ impl Continuation {
 
     /// Execute this continuation. Enqueue any resulting continuation in the scheduler. Then, cede
     /// control to the scheduler.
-    pub fn run(mut self) -> ! {
+    pub fn run(mut self, event: Event) -> ! {
         // run this continuation, and enqueue the result
-        match (self.routine.take().unwrap())() {
-            // if we have a continuation, run that
-            ProcessResult::Success(cont) | ProcessResult::Error(cont) => sched::enqueue(cont),
+        match (self.routine.take().unwrap())(event) {
+            // schedule the continuation
+            TaskResult::Success(eventkind, cont) => sched::enqueue(eventkind, cont),
+
+            // schedule the error continuation with the error event
+            TaskResult::Error(cont) => sched::enqueue(EventKind::Now, cont),
 
             // if they are done, the continuation is the idle continuation
-            ProcessResult::Done => sched::idle(),
+            TaskResult::Done => sched::idle(),
         }
 
         // TODO: do any necessary cleanup here
@@ -56,7 +95,7 @@ impl Continuation {
 /// Initialize the process/scheduling subsystem with the initial continuation.
 pub fn init<F>(init: F)
 where
-    F: 'static + Send + FnMut() -> ProcessResult,
+    F: 'static + Send + FnMut(Event) -> TaskResult,
 {
     sched::init(init)
 }
