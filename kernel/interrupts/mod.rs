@@ -13,3 +13,9 @@ mod tss;
 pub fn init() {
     pic::init();
 }
+
+/// The number of timer interrupts per second.
+pub fn pit_freq() -> usize {
+    // TODO
+    unimplemented!();
+}

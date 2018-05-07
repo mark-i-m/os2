@@ -2,13 +2,10 @@
 
 pub mod sched;
 
-use continuation::{ContResult, Event};
+use continuation::{ContResult, Continuation, Event};
 
 /// Initialize the process/scheduling subsystem with the initial continuation.
-pub fn init<F>(init: F)
-where
-    F: 'static + Send + FnMut(Event) -> ContResult,
-{
+pub fn init(init: Continuation) {
     sched::init(init)
 }
 

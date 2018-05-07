@@ -102,15 +102,12 @@ impl Stack {
 }
 
 /// Initialize the scheduler
-pub fn init<F>(init: F)
-where
-    F: 'static + Send + FnMut(Event) -> ContResult,
-{
+pub fn init(init: Continuation) {
     let mut s = SCHEDULER.lock();
 
     // Create the scheduler
     *s = Some(Scheduler {
-        next: Some((EventKind::Now, Continuation::new(init))),
+        next: Some((EventKind::Now, init)),
         current_stack: Stack::new(),
         clean_stack: Stack::new(),
     });

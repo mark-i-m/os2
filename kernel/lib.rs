@@ -23,7 +23,8 @@ mod memory;
 mod process;
 mod time;
 
-use continuation::ContResult;
+use continuation::{ContResult, Continuation, EventKind};
+use time::SysTime;
 
 /// The global allocator
 #[global_allocator]
@@ -63,10 +64,18 @@ pub fn kernel_main() -> ! {
 
     // Create the init task
     printk!("Taskes");
-    process::init(|_| {
+    let init = Continuation::new(|_| {
         printk!("Init task running!");
-        ContResult::Done
+        ContResult::Success(
+            EventKind::Until(SysTime::now().after(4)),
+            Continuation::new(|_| {
+                printk!("Init waited for 4 seconds! Success :tada:");
+                ContResult::Done
+            }),
+        )
     });
+
+    process::init(init);
     printk!(" ✔\n");
 
     // Start the first task
