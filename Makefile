@@ -31,6 +31,7 @@ rungraphic:
 	make run RUSTOPT="--release" ASOPT="-O3"
 
 rundebug: KERNELDEBUG = -s -S
+rundebug: KERNELSERIAL = -nographic
 rundebug: clean run
 
 # clean

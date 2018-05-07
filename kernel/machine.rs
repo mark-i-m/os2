@@ -504,3 +504,66 @@ pub unsafe extern "C" fn page_fault_handler() {
         "
     };
 }
+
+#[naked]
+pub unsafe extern "C" fn gpf_handler() {
+    use interrupts::handle_gpf;
+
+    let error: usize;
+    let rip: usize;
+    let cs: usize;
+    let flags: usize;
+
+    asm!{
+        "
+        push %rax
+        push %rbx
+        push %rcx
+        push %rdx
+        push %rsi
+        push %rdi
+        push %rbp
+        push %r8
+        push %r9
+        push %r10
+        push %r11
+        push %r12
+        push %r13
+        push %r14
+        push %r15
+
+        movq 0x78(%rsp), $0  /* error code */
+        movq 0x80(%rsp), $1  /* rip        */
+        movq 0x88(%rsp), $2  /* cs         */
+        movq 0x90(%rsp), $3  /* flags      */
+        "
+        : "=r"(error), "=r"(rip), "=r"(cs), "=r"(flags)
+        : /* No inputs */
+        : "rsp"
+        : "volatile"
+    };
+
+    handle_gpf(error, cs, rip, flags);
+
+    asm!{
+        "
+        pop %r15
+        pop %r14
+        pop %r13
+        pop %r12
+        pop %r11
+        pop %r10
+        pop %r9
+        pop %r8
+        pop %rbp
+        pop %rdi
+        pop %rsi
+        pop %rdx
+        pop %rcx
+        pop %rbx
+        pop %rax
+        add $$8,%rsp   /* pop error */
+        iret
+        "
+    };
+}

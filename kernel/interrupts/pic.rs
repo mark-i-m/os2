@@ -75,6 +75,11 @@ fn pic_eoi(irq: u8) {
 }
 
 /// IRQ handler
+///
+/// For more info on IRQ handlers: https://wiki.osdev.org/Interrupts
+///
+/// Note that this should _not_ be confused with _exceptions_. For more info on x86 exceptions, see
+/// https://wiki.osdev.org/Exceptions
 pub fn pic_irq(irq: usize, _: &mut IrqContext) {
     // execute handler
     match irq {

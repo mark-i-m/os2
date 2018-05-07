@@ -15,7 +15,7 @@ pub fn init(allocator: &mut KernelAllocator, kheap_start: usize, kheap_size: usi
 }
 
 /// Placeholder... TODO
-pub fn handle_page_fault(_: usize) {
-    // TODO: replace this
-    unimplemented!();
+pub fn handle_page_fault(addr: usize) {
+    // TODO
+    panic!("Page fault at {:x}", addr);
 }

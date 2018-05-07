@@ -51,7 +51,7 @@ pub fn kernel_main() -> ! {
     interrupts::tss_init();
     printk!(" ✔\n");
 
-    // Set up interrupt handling
+    // Set up interrupt/exception handling
     printk!("Interrupts...\n\t");
     interrupts::init();
     printk!("Interrupts ✔\n");
@@ -80,7 +80,8 @@ pub fn kernel_main() -> ! {
 
     // We can turn on interrupts now.
     unsafe {
-        //machine::sti(); TODO
+        machine::sti(); //TODO
+        machine::cli(); //TODO
     }
 
     // Start the first task
