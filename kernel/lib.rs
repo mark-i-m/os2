@@ -47,7 +47,7 @@ pub fn kernel_main() -> ! {
 
     // Set up TSS
     printk!("TSS");
-    interrupts::tss_init();
+    //interrupts::tss_init(); // TODO
     printk!(" ✔\n");
 
     // Set up interrupt/exception handling
@@ -77,10 +77,6 @@ pub fn kernel_main() -> ! {
 
     // We can turn on interrupts now.
     unsafe {
-        asm!("int3");
-
-        loop {}
-
         interrupts::enable();
     }
 

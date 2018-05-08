@@ -58,7 +58,8 @@ kStart32:
 	or $0x80000000, %eax
 	mov %eax, %cr0
 
-	// set up a long mode GDT :/
+	// set up a long mode IDT and GDT :/
+    lidt idtDesc
 	lgdt gdt64Desc
 
 	// long jump to kernel entry point in 64-bit mode
@@ -85,6 +86,17 @@ page_dir_pointer:
 .global page_map_l4
 page_map_l4:
 	.zero 4096
+
+/*
+Long-mode IDT... all zeros for now, but will add some interrupts later.
+*/
+    .global idt64
+idt64:
+    .zero (256 * 16)
+
+idtDesc:
+    .word (256 * 16) - 1 // length of idt
+    .long idt64
 
 /*
 Long-mode GDT: a single code segment. No data segment is need in 64-bit mode.

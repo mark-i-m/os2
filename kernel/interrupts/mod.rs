@@ -14,7 +14,7 @@ mod tss;
 /// Imports that are defined at boot
 #[allow(improper_ctypes)]
 extern "C" {
-    pub static mut idt: Idt;
+    pub static mut idt64: Idt;
 }
 
 /// Initialize interrupts (and exceptions).
@@ -24,7 +24,7 @@ pub fn init() {
 
     // Add a handler for GPF
     unsafe {
-        idt.general_protection_fault.set_handler_fn(handle_gpf);
+        idt64.general_protection_fault.set_handler_fn(handle_gpf);
     }
 
     // Initialize the Programmable Interrupt Timer

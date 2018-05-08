@@ -1,12 +1,11 @@
 //! A module for programmable interrupt controller
 
 use x86_64::{instructions::port::Port,
-             structures::idt::{ExceptionStackFrame, Idt},
-             PrivilegeLevel};
+             structures::idt::{ExceptionStackFrame, Idt}};
 
 use time; // the most epic import statement ever written!
 
-use super::idt;
+use super::idt64;
 
 /// Command port for PIC1
 const C1: Port<u8> = Port::new(0x20);
@@ -20,7 +19,7 @@ const C2: Port<u8> = Port::new(0xA0);
 /// Data port for PIC2
 const D2: Port<u8> = Port::new(0xA1);
 
-/// The first 0x30 entries of the IDT are reserved for traps and exceptions. So the first
+/// The first entries of the IDT are reserved for traps and exceptions. So the first
 /// _interrupt_ is at vector 0x30.
 const FIRST_IDT: u8 = 0x30;
 
@@ -50,28 +49,25 @@ pub fn init() {
     };
 
     // Add some interrupt handlers
-    let idt_mut = unsafe { &mut idt };
-
-    // Clear the IDT (being careful not to cause an exception!)
-    *idt_mut = Idt::new();
+    let idt_mut = unsafe { &mut idt64 };
 
     // Set up basic interrupts
-    idt_mut.interrupts[0x0].set_handler_fn(irq_0);
-    idt_mut.interrupts[0x1].set_handler_fn(irq_1);
-    idt_mut.interrupts[0x2].set_handler_fn(irq_2);
-    idt_mut.interrupts[0x3].set_handler_fn(irq_3);
-    idt_mut.interrupts[0x4].set_handler_fn(irq_4);
-    idt_mut.interrupts[0x5].set_handler_fn(irq_5);
-    idt_mut.interrupts[0x6].set_handler_fn(irq_6);
-    idt_mut.interrupts[0x7].set_handler_fn(irq_7);
-    idt_mut.interrupts[0x8].set_handler_fn(irq_8);
-    idt_mut.interrupts[0x9].set_handler_fn(irq_9);
-    idt_mut.interrupts[0xa].set_handler_fn(irq_a);
-    idt_mut.interrupts[0xb].set_handler_fn(irq_b);
-    idt_mut.interrupts[0xc].set_handler_fn(irq_c);
-    idt_mut.interrupts[0xd].set_handler_fn(irq_d);
-    idt_mut.interrupts[0xe].set_handler_fn(irq_e);
-    idt_mut.interrupts[0xf].set_handler_fn(irq_f);
+    idt_mut[FIRST_IDT as usize + 0x0].set_handler_fn(irq_0);
+    idt_mut[FIRST_IDT as usize + 0x1].set_handler_fn(irq_1);
+    idt_mut[FIRST_IDT as usize + 0x2].set_handler_fn(irq_2);
+    idt_mut[FIRST_IDT as usize + 0x3].set_handler_fn(irq_3);
+    idt_mut[FIRST_IDT as usize + 0x4].set_handler_fn(irq_4);
+    idt_mut[FIRST_IDT as usize + 0x5].set_handler_fn(irq_5);
+    idt_mut[FIRST_IDT as usize + 0x6].set_handler_fn(irq_6);
+    idt_mut[FIRST_IDT as usize + 0x7].set_handler_fn(irq_7);
+    idt_mut[FIRST_IDT as usize + 0x8].set_handler_fn(irq_8);
+    idt_mut[FIRST_IDT as usize + 0x9].set_handler_fn(irq_9);
+    idt_mut[FIRST_IDT as usize + 0xa].set_handler_fn(irq_a);
+    idt_mut[FIRST_IDT as usize + 0xb].set_handler_fn(irq_b);
+    idt_mut[FIRST_IDT as usize + 0xc].set_handler_fn(irq_c);
+    idt_mut[FIRST_IDT as usize + 0xd].set_handler_fn(irq_d);
+    idt_mut[FIRST_IDT as usize + 0xe].set_handler_fn(irq_e);
+    idt_mut[FIRST_IDT as usize + 0xf].set_handler_fn(irq_f);
 
     // Good for debugging
     idt_mut.breakpoint.set_handler_fn(breakpoint_handler);

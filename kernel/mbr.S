@@ -257,16 +257,13 @@ gdtDesc:
     .word (GDT_COUNT * 8) - 1
     .long gdt
 
-
 #define IDT_COUNT 256
 
-    .global idt
 idt:
     .skip IDT_COUNT * 8
 idtDesc:
     .word (IDT_COUNT * 8) - 1
     .long idt
-
 
     .global memory_map
 memory_map: # save some space for a memory map of no more than 20 entries

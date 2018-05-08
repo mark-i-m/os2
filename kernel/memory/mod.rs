@@ -2,7 +2,7 @@
 
 use x86_64::structures::idt::{ExceptionStackFrame, PageFaultErrorCode};
 
-use interrupts::idt;
+use interrupts::idt64;
 
 pub use self::heap::KernelAllocator;
 
@@ -15,7 +15,7 @@ pub fn init(allocator: &mut KernelAllocator, kheap_start: usize, kheap_size: usi
 
     // Register page fault handler
     unsafe {
-        idt.page_fault.set_handler_fn(handle_page_fault);
+        idt64.page_fault.set_handler_fn(handle_page_fault);
     }
 }
 

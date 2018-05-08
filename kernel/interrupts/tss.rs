@@ -10,8 +10,6 @@ static mut TSS64: TSS = TSS::new();
 extern "C" {
     static mut tssDescriptor: TSSDescriptor;
     static tssDS: usize; // TODO: check all of the types in this file to make sure they are the right width
-
-    #[allow(dead_code)]
     static kernelDataSeg: u16;
 }
 
