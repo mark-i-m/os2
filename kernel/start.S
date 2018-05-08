@@ -101,6 +101,7 @@ idtDesc:
 /*
 Long-mode GDT: a single code segment. No data segment is need in 64-bit mode.
 */
+    .align 16
 	.global gdt64
 gdt64:
 	.quad 0 // zero entry

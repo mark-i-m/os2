@@ -64,11 +64,11 @@ pub fn kernel_main() -> ! {
     // Create the init task
     printk!("Taskes");
     process::init(Continuation::new(|_| {
-        printk!("Init task running!");
+        printk!("Init task running!\n");
         ContResult::Success(
             EventKind::Until(SysTime::now().after(4)),
             Continuation::new(|_| {
-                printk!("Init waited for 4 seconds! Success :tada:");
+                printk!("Init waited for 4 seconds! Success 🎉\n");
                 ContResult::Done
             }),
         )

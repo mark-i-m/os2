@@ -51,6 +51,11 @@ pub fn init() {
     // Add some interrupt handlers
     let idt_mut = unsafe { &mut idt64 };
 
+    // Reset the IDT (this sets a few critical bits, too)
+    //
+    // We need to be careful not to overflow the stack, though...
+    Idt::reset(idt_mut);
+
     // Set up basic interrupts
     idt_mut[FIRST_IDT as usize + 0x0].set_handler_fn(irq_0);
     idt_mut[FIRST_IDT as usize + 0x1].set_handler_fn(irq_1);
