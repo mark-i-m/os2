@@ -1,7 +1,6 @@
 //! A module for programmable interrupt controller
 
-use x86_64::{instructions::port::Port,
-             structures::idt::{ExceptionStackFrame, Idt}};
+use x86_64::{instructions::port::Port, structures::idt::ExceptionStackFrame};
 
 use time; // the most epic import statement ever written!
 
@@ -54,7 +53,7 @@ pub fn init() {
     // Reset the IDT (this sets a few critical bits, too)
     //
     // We need to be careful not to overflow the stack, though...
-    Idt::reset(idt_mut);
+    idt_mut.reset();
 
     // Set up basic interrupts
     idt_mut[FIRST_IDT as usize + 0x0].set_handler_fn(irq_0);
