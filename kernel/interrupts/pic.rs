@@ -1,6 +1,7 @@
 //! A module for programmable interrupt controller
 
-use x86_64::{instructions::port::Port, structures::idt::ExceptionStackFrame};
+use x86_64::{instructions::{interrupts, port::Port},
+             structures::idt::ExceptionStackFrame};
 
 use time; // the most epic import statement ever written!
 
@@ -117,9 +118,7 @@ fn pic_irq(irq: usize, _: &mut ExceptionStackFrame) {
 
         // Other (unknown) interrupts
         _ => {
-            unsafe {
-                super::disable();
-            }
+            interrupts::disable();
             panic!("unknown interrupt {}\n", irq)
         }
     }

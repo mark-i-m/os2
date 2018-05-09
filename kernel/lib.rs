@@ -38,9 +38,7 @@ pub fn kernel_main() -> ! {
     // - no current process
 
     // Make sure interrupts are off
-    unsafe {
-        interrupts::disable();
-    }
+    x86_64::instructions::interrupts::disable();
 
     // Let everyone know we are here
     printk!("\nYo Yo Yo! Made it to `kernel_main`! Hooray!\n");
@@ -76,9 +74,7 @@ pub fn kernel_main() -> ! {
     printk!(" ✔\n");
 
     // We can turn on interrupts now.
-    unsafe {
-        interrupts::enable();
-    }
+    x86_64::instructions::interrupts::enable();
 
     // Start the first task
     process::start();

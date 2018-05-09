@@ -7,7 +7,7 @@
 use core::fmt::{Arguments, Write};
 
 use debug::Debug;
-use interrupts;
+use x86_64::instructions::interrupts;
 
 // For bare-bones rust
 #[lang = "eh_personality"]
@@ -23,9 +23,8 @@ pub extern "C" fn rust_begin_panic(
     line: u32,
     column: u32,
 ) -> ! {
-    unsafe {
-        interrupts::disable();
-    } // we should no be interrupting any more
+    // we should no be interrupting any more
+    interrupts::disable();
 
     printk!("\n========{{ PANIC }}========\n");
     printk!("{}:{}:{}\n", file, line, column);

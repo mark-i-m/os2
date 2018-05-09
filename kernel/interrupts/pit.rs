@@ -1,6 +1,6 @@
 //! A module for the programmable interrupt timer
 
-use x86_64::{instructions::port::Port,
+use x86_64::{instructions::{interrupts, port::Port},
              registers::flags::{flags, set_flags}};
 
 /// Max frequency of the PIT
@@ -30,7 +30,7 @@ pub fn init() {
         let saved_flags = flags();
 
         // disable interrupts
-        super::disable();
+        interrupts::disable();
 
         // command
         // 00 (channel 0)

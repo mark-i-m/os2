@@ -25,11 +25,13 @@ impl SysTime {
         SysTime(time)
     }
 
+    /*
     /// Get the system time atomically. This has worse performance but will get the most recent
     /// timestamp.
     pub fn now_atomic() -> Self {
         SysTime(TICKS.load(Ordering::Relaxed))
     }
+    */
 
     /// Get the time `secs` seconds after `self`.
     pub fn after(&self, secs: usize) -> Self {

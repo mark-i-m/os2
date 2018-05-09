@@ -44,33 +44,3 @@ extern "x86-interrupt" fn handle_gpf(esf: &mut ExceptionStackFrame, error: u64) 
         esf.cpu_flags
     );
 }
-
-/// Disable interrupts
-pub unsafe fn disable() {
-    /*
-    cli
-    */
-
-    asm!{
-        "cli"
-        : /* No outputs */
-        : /* No inputs*/
-        : /* No clobbers */
-        : /* No options */
-    };
-}
-
-/// Enable interrupts
-pub unsafe fn enable() {
-    /*
-    sti
-    */
-
-    asm!{
-        "sti"
-        : /* No outputs */
-        : /* No inputs*/
-        : /* No clobbers */
-        : /* No options */
-    };
-}
