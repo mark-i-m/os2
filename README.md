@@ -11,6 +11,25 @@
   pushed to the end of that processor's scheduler list. The cores work through
   their lists in a work-stealing fashion.
 
+# Building
+
+- rust, nightly
+
+  ```txt
+  rustc 1.27.0-nightly (2f2a11dfc 2018-05-16)
+  ```
+
+- xargo
+
+- build-essentials: gcc, make
+
+
+To build and run
+``` console
+$ cd os2
+$ make runtext
+```
+
 # TODO
 
 ## Global State
