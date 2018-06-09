@@ -1,0 +1,79 @@
+[[package]]
+name = "bit_field"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "bitflags"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "buddy"
+version = "0.1.0"
+source = "git+https://github.com/mark-i-m/buddy#9ccadf84b148b7b1a687215461c941edd7fb67d1"
+
+[[package]]
+name = "kernel"
+version = "0.1.0"
+dependencies = [
+ "buddy 0.1.0 (git+https://github.com/mark-i-m/buddy)",
+ "rlibc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallheap 0.1.0 (git+https://github.com/mark-i-m/smallheap)",
+ "spin 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "x86_64 0.2.0-beta (git+https://github.com/rust-osdev/x86_64)",
+]
+
+[[package]]
+name = "os_bootinfo"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "rlibc"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "smallheap"
+version = "0.1.0"
+source = "git+https://github.com/mark-i-m/smallheap#feb35271a49912e003365c94f81a89565906e97b"
+
+[[package]]
+name = "spin"
+version = "0.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "usize_conversions"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "ux"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "x86_64"
+version = "0.2.0-beta"
+source = "git+https://github.com/rust-osdev/x86_64#4fa423dbf15c57ef130810088f373db3b1469713"
+dependencies = [
+ "bit_field 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "os_bootinfo 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "usize_conversions 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ux 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[metadata]
+"checksum bit_field 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ed8765909f9009617974ab6b7d332625b320b33c326b1e9321382ef1999b5d56"
+"checksum bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d0c54bb8f454c567f21197eefcdbf5679d0bd99f2ddbe52e84c77061952e6789"
+"checksum buddy 0.1.0 (git+https://github.com/mark-i-m/buddy)" = "<none>"
+"checksum os_bootinfo 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "66481dbeb5e773e7bd85b63cd6042c30786f834338288c5ec4f3742673db360a"
+"checksum rlibc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fc874b127765f014d792f16763a81245ab80500e2ad921ed4ee9e82481ee08fe"
+"checksum smallheap 0.1.0 (git+https://github.com/mark-i-m/smallheap)" = "<none>"
+"checksum spin 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "14db77c5b914df6d6173dda9a3b3f5937bd802934fa5edaf934df06a3491e56f"
+"checksum usize_conversions 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f70329e2cbe45d6c97a5112daad40c34cd9a4e18edb5a2a18fefeb584d8d25e5"
+"checksum ux 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "53d8df5dd8d07fedccd202de1887d94481fadaea3db70479f459e8163a1fab41"
+"checksum x86_64 0.2.0-beta (git+https://github.com/rust-osdev/x86_64)" = "<none>"

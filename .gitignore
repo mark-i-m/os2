@@ -6,7 +6,6 @@
 
 kernel/kernel
 kernel/target
-kernel/Cargo.lock
 kernel/.gdb_history
 user/user
 *.bin

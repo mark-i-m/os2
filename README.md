@@ -21,7 +21,7 @@ including dependencies). Not bad!
 - rust, nightly
 
   ```txt
-  rustc 1.27.0-nightly (2f2a11dfc 2018-05-16)
+  rustc 1.28.0-nightly (8afb89493 2018-06-08)
   ```
 
 - xargo

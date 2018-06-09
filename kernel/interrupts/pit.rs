@@ -1,7 +1,7 @@
 //! A module for the programmable interrupt timer
 
 use x86_64::{instructions::{interrupts, port::Port},
-             registers::flags::{flags, set_flags}};
+             registers::rflags};
 
 /// Max frequency of the PIT
 const MAX_HZ: usize = 1193182;
@@ -27,7 +27,7 @@ pub fn init() {
 
     unsafe {
         // save flags
-        let saved_flags = flags();
+        let saved_flags = rflags::read();
 
         // disable interrupts
         interrupts::disable();
@@ -48,6 +48,6 @@ pub fn init() {
         PIT_DATA.write(second_byte);
 
         // restore flags
-        set_flags(saved_flags);
+        rflags::write(saved_flags);
     }
 }

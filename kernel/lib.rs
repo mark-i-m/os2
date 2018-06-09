@@ -1,6 +1,6 @@
 #![feature(
     lang_items, asm, start, const_fn, naked_functions, alloc, global_allocator, allocator_api,
-    box_syntax, abi_x86_interrupt
+    box_syntax, abi_x86_interrupt, panic_implementation, panic_info_message
 )]
 // Compile without libstd
 #![no_std]
@@ -8,6 +8,7 @@
 #![crate_name = "kernel"]
 
 extern crate alloc;
+extern crate buddy;
 extern crate rlibc;
 extern crate smallheap;
 extern crate spin;
