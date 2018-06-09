@@ -6,16 +6,27 @@ LD = ld
 OBJCOPY = objcopy
 DD = dd
 
+# Output and Input config
+CARGO_OUTPUT_DIR = $(PWD)
+TARGET_JSON = x86_64-unknown-elf.json
+
 # Choose options
-RUSTOPT = 
+RUSTOPT =
 ASOPT = -O0 -g
 
 RUSTFLAGS = "-Z no-landing-pads"
 ASFLAGS += -m64 ${ASOPT}
 
+# Build up cargo flags
+CARGO_TARGET_FLAGS = --target $(TARGET_JSON)
+CARGO_OUTPUT_FLAGS = --out-dir $(CARGO_OUTPUT_DIR)
+CARGO_FLAGS = -Z unstable-options $(CARGO_OUTPUT_FLAGS) $(RUSTOPT) $(CARGO_TARGET_FLAGS)
+
 # Lists of files
 RUSTFILES = $(shell find -name '*.rs')
 SFILES = $(wildcard *.S) $(wildcard *.s)
+
+# Compiled Objects
 
 OFILES = $(subst .s,.o,$(subst .S,.o,$(SFILES)))
 
@@ -31,13 +42,8 @@ all: kernel.img
 %.o: %.s
 	${CC} ${ASFLAGS} -c -o $@ $<
 
-libkernel.a: ${RUSTFILES} Cargo.toml
-	RUST_TARGET_PATH=$(shell pwd) RUSTFLAGS=${RUSTFLAGS} CARGO_INCREMENTAL=1 xargo +nightly build --target x86_64-unknown-elf ${RUSTOPT}
-	@if [ "${RUSTOPT}" = "--release" ]; then  \
-		cp target/x86_64-unknown-elf/release/libkernel.a . ;  \
-	else \
-		cp target/x86_64-unknown-elf/debug/libkernel.a . ; \
-	fi
+libkernel.a: ${RUSTFILES} Cargo.toml Makefile
+	RUSTFLAGS=${RUSTFLAGS} cargo xbuild  ${CARGO_FLAGS}
 
 %.bin: %
 	${OBJCOPY} -O binary $< $@
@@ -55,4 +61,4 @@ clean:
 	rm -f *.img
 	rm -f *.bin
 	rm -f kernel
-	xargo clean
+	cargo clean
