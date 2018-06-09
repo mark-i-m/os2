@@ -24,7 +24,7 @@ including dependencies). Not bad!
   rustc 1.28.0-nightly (8afb89493 2018-06-08)
   ```
 
-- xargo
+- `cargo xbuild` via `cargo install cargo-xbuild`
 
 - build-essentials: gcc, make
 
