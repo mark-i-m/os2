@@ -13,6 +13,7 @@ extern crate rlibc;
 extern crate smallheap;
 extern crate spin;
 extern crate x86_64;
+extern crate os_bootinfo;
 
 #[macro_use]
 mod debug;
@@ -26,7 +27,7 @@ mod time;
 use continuation::{ContResult, Continuation, EventKind};
 use time::SysTime;
 
-/// The global allocator
+/// The kernel heap
 #[global_allocator]
 static mut ALLOCATOR: memory::KernelAllocator = memory::KernelAllocator::new();
 

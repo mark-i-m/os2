@@ -11,13 +11,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "buddy"
 version = "0.1.0"
-source = "git+https://github.com/mark-i-m/buddy#9ccadf84b148b7b1a687215461c941edd7fb67d1"
+source = "git+https://github.com/mark-i-m/buddy#450b93f77e58366b841e7c34783c3022875bc993"
 
 [[package]]
 name = "kernel"
 version = "0.1.0"
 dependencies = [
  "buddy 0.1.0 (git+https://github.com/mark-i-m/buddy)",
+ "os_bootinfo 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlibc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallheap 0.1.0 (git+https://github.com/mark-i-m/smallheap)",
  "spin 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
