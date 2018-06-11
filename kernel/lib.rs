@@ -1,6 +1,6 @@
 #![feature(
     lang_items, asm, start, const_fn, naked_functions, alloc, allocator_api,
-    box_syntax, abi_x86_interrupt, panic_implementation, panic_info_message
+    box_syntax, abi_x86_interrupt, panic_implementation, panic_info_message, drain_filter
 )]
 // Compile without libstd
 #![no_std]
@@ -9,11 +9,11 @@
 
 extern crate alloc;
 extern crate buddy;
+extern crate os_bootinfo;
 extern crate rlibc;
 extern crate smallheap;
 extern crate spin;
 extern crate x86_64;
-extern crate os_bootinfo;
 
 #[macro_use]
 mod debug;

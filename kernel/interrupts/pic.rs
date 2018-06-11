@@ -1,7 +1,9 @@
 //! A module for programmable interrupt controller
 
-use x86_64::{instructions::{interrupts, port::Port},
-             structures::idt::ExceptionStackFrame};
+use x86_64::{
+    instructions::{interrupts, port::Port},
+    structures::idt::ExceptionStackFrame,
+};
 
 use time; // the most epic import statement ever written!
 

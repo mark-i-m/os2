@@ -1,7 +1,9 @@
 //! A module for the programmable interrupt timer
 
-use x86_64::{instructions::{interrupts, port::Port},
-             registers::rflags};
+use x86_64::{
+    instructions::{interrupts, port::Port},
+    registers::rflags,
+};
 
 /// Max frequency of the PIT
 const MAX_HZ: usize = 1193182;

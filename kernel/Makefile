@@ -7,7 +7,6 @@ OBJCOPY = objcopy
 DD = dd
 
 # Output and Input config
-CARGO_OUTPUT_DIR = $(PWD)
 TARGET_JSON = x86_64-unknown-elf.json
 
 # Choose options
@@ -19,7 +18,7 @@ ASFLAGS += -m64 ${ASOPT}
 
 # Build up cargo flags
 CARGO_TARGET_FLAGS = --target $(TARGET_JSON)
-CARGO_OUTPUT_FLAGS = --out-dir $(CARGO_OUTPUT_DIR)
+CARGO_OUTPUT_FLAGS = --out-dir `pwd`
 CARGO_FLAGS = -Z unstable-options $(CARGO_OUTPUT_FLAGS) $(RUSTOPT) $(CARGO_TARGET_FLAGS)
 
 # Lists of files

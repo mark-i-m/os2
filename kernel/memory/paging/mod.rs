@@ -9,11 +9,11 @@ use buddy::BuddyAllocator;
 use spin::Mutex;
 
 use x86_64::{
-    PhysAddr,
     structures::{
+        idt::{ExceptionStackFrame, PageFaultErrorCode},
         paging::{PageSize, Size4KiB},
-        idt::{ExceptionStackFrame, PageFaultErrorCode}
-    }
+    },
+    PhysAddr,
 };
 
 use self::e820::E820Info;
