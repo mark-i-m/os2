@@ -48,7 +48,7 @@ pub fn init() {
         total_mem += end - start + 1;
     }
 
-    printk!("\tphysical memory inited - {} pages\n", total_mem);
+    printk!("\tphysical memory inited - {} frame\n", total_mem);
 
     ///////////////////////////////////////////////////////////////////////////
     // TODO: Setup the recursive page table system

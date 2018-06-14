@@ -137,8 +137,6 @@ impl E820Info {
             .filter(|(s, e)| s <= e)
             .collect();
 
-        printk!("{:#x?}", regions);
-
         E820Info { regions }
     }
 
