@@ -1,5 +1,5 @@
 #![feature(
-    lang_items, asm, start, const_fn, naked_functions, alloc, global_allocator, allocator_api,
+    lang_items, asm, start, const_fn, naked_functions, alloc, allocator_api,
     box_syntax, abi_x86_interrupt, panic_implementation, panic_info_message
 )]
 // Compile without libstd

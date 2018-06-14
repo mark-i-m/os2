@@ -1,7 +1,7 @@
 //! This file contains the memory allocator used by the kernel. It is a thin wrapper around
 //! smallheap.
 
-use core::alloc::{GlobalAlloc, Layout, Opaque};
+use core::alloc::{GlobalAlloc, Layout};
 use core::cell::RefCell;
 
 use smallheap::Allocator;
@@ -24,17 +24,17 @@ impl KernelAllocator {
 }
 
 unsafe impl GlobalAlloc for KernelAllocator {
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         self.heap
             .borrow_mut()
             .as_mut()
             .unwrap()
             .malloc(layout.size(), layout.align())
-            .map(|p| p.as_ptr() as *mut Opaque)
-            .unwrap_or(0 as *mut Opaque)
+            .map(|p| p.as_ptr() as *mut u8)
+            .unwrap_or(0 as *mut u8)
     }
 
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         self.heap
             .borrow_mut()
             .as_mut()
