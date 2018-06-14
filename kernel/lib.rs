@@ -1,6 +1,6 @@
 #![feature(
-    lang_items, asm, start, const_fn, naked_functions, alloc, allocator_api,
-    box_syntax, abi_x86_interrupt, panic_implementation, panic_info_message, drain_filter
+    lang_items, asm, start, const_fn, naked_functions, alloc, allocator_api, box_syntax,
+    abi_x86_interrupt, panic_implementation, panic_info_message, drain_filter
 )]
 // Compile without libstd
 #![no_std]
