@@ -132,7 +132,10 @@ impl E820Info {
                 // Round down to nearest page boundary
                 let e_page = PhysAddr::new(e_bytes).align_down(Size4KiB::SIZE).as_u64();
 
-                ((s_page / Size4KiB::SIZE) as usize, (e_page / Size4KiB::SIZE) as usize)
+                (
+                    (s_page / Size4KiB::SIZE) as usize,
+                    (e_page / Size4KiB::SIZE) as usize,
+                )
             })
             .filter(|(s, e)| s <= e)
             .collect();
@@ -142,7 +145,10 @@ impl E820Info {
 
     /// Compute the number of physical pages available.
     pub fn num_phys_pages(&self) -> usize {
-        self.regions.iter().map(|(start, end)| end - start + 1).sum()
+        self.regions
+            .iter()
+            .map(|(start, end)| end - start + 1)
+            .sum()
     }
 }
 

@@ -83,7 +83,8 @@ page_dir:
 	.zero 4096
 page_dir_pointer:
 	.zero 4096
-.global page_map_l4
+
+    .global page_map_l4
 page_map_l4:
 	.zero 4096
 

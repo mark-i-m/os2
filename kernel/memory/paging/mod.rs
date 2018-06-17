@@ -11,8 +11,9 @@ use spin::Mutex;
 use x86_64::{
     structures::{
         idt::{ExceptionStackFrame, PageFaultErrorCode},
-        paging::{PageSize, Size4KiB},
+        paging::{PageSize, PageTable, PageTableFlags, RecursivePageTable, Size4KiB},
     },
+    ux::u9,
     PhysAddr,
 };
 
@@ -21,11 +22,23 @@ use self::e820::E820Info;
 /// The kernel's physical frame allocator
 static PHYS_MEM_ALLOC: Mutex<Option<BuddyAllocator<usize>>> = Mutex::new(None);
 
+extern "C" {
+    /// The root PML4 for the system.
+    static mut page_map_l4: PageTable;
+}
+
+/// The page tables for the system. The page tables are recursive in the 511-th entry.
+static PAGE_TABLES: Mutex<Option<RecursivePageTable>> = Mutex::new(None);
+
+/// Recursive page table index.
+const RECURSIVE_IDX: u9 = u9::MAX; // 511
+
 // TODO: virtual address space allocator
 
-// TODO: root page tables
-
 /// Initialize the physical and virtual memory allocators. Setup paging properly.
+///
+/// Currently, we have a single set of page tables that direct maps the first 2MiB of memory with a
+/// single huge page.
 pub fn init() {
     ///////////////////////////////////////////////////////////////////////////
     // Setup the physical memory allocator with info from E820
@@ -51,8 +64,23 @@ pub fn init() {
     printk!("\tphysical memory inited - {} frame\n", total_mem);
 
     ///////////////////////////////////////////////////////////////////////////
-    // TODO: Setup the recursive page table system
+    // Setup recursive page tables.
     ///////////////////////////////////////////////////////////////////////////
+
+    // Add recursive mapping
+    unsafe {
+        page_map_l4[RECURSIVE_IDX].set_addr(
+            PhysAddr::new((&page_map_l4) as *const PageTable as u64),
+            PageTableFlags::PRESENT
+                | PageTableFlags::WRITABLE
+                | PageTableFlags::NO_CACHE
+                | PageTableFlags::GLOBAL
+                | PageTableFlags::NO_EXECUTE,
+        );
+    }
+
+    *PAGE_TABLES.lock() =
+        Some(unsafe { RecursivePageTable::new_unchecked(&mut page_map_l4, RECURSIVE_IDX) });
 
     printk!("\tpage tables inited\n");
 
