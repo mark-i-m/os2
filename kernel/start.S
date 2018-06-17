@@ -19,12 +19,25 @@
 kStart32:
 	// Set up initial page tables so we can jump to 64-bit long mode
 
+    // pt -- we set all page table entries
+    mov $0, %ecx // pte idx
+    mov $page_table, %eax // page table
+
+    pteloop:
+        orw $0x1, (%eax, %ecx, 8) // present
+        orw $0x2, (%eax, %ecx, 8) // writable
+        mov %ecx, %edx
+        shl $12, %edx // compute the page frame addr
+        or %edx, (%eax, %ecx, 8) // set address
+        add $1, %ecx
+        cmp $512, %ecx
+    jl pteloop
+
 	// pd
 	mov $page_dir, %eax
 	orw $0x1, (%eax) // present
 	orw $0x2, (%eax) // writable
-	orw $0x80, (%eax) // 2MiB page
-	// entry's address is already 0
+	orw $page_table, (%eax) // address of page_table
 
 	// pdp
 	mov $page_dir_pointer, %eax
@@ -72,13 +85,12 @@ hang32:
 Initial page tables so we can jump to 64-bit mode.
 
 For now, we just set up an identity mapping for the kernel... we will later
-change this.  We will use a single 2MiB page to identity map the beginning
-memory. Until we turn on real paging, we need to be extra careful about
-dereferencing null pointers...
+change this. For now, we will map the first 2MiB. Until we turn on real paging,
+we need to be extra careful about dereferencing null pointers...
 */
 .align 4096
-#page_table:  // 2MiB page, so we don't need this :)
-#	.zero 4096
+page_table:
+	.zero 4096
 page_dir:
 	.zero 4096
 page_dir_pointer:

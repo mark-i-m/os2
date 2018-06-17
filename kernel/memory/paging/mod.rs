@@ -86,7 +86,7 @@ pub fn init() {
 
     ///////////////////////////////////////////////////////////////////////////
     // TODO: Redo paging from the beginning of memory
-    //  - direct map the beginning memory
+    //  - direct map the beginning memory (no change)
     //  - Page 0 is null, so no mapping
     //  - The page before the kernel heap is null, so no mapping
     ///////////////////////////////////////////////////////////////////////////
