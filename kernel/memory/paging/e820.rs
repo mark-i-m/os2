@@ -66,7 +66,8 @@ impl E820Info {
         // Also, this function is optimized for readability. Since we only have 32 regions at most,
         // performance is not an issue.
 
-        // First, get all the info from e820. Only the first `memory_map_count` entries are valid.
+        // First, get all the info from e820.
+        // TODO: Only the first `memory_map_count` entries are valid.
         let info: Vec<_> = unsafe { &memory_map }
             .iter()
             .filter(|region| region.len() > 0)
