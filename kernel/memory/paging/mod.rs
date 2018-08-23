@@ -10,6 +10,7 @@ use spin::Mutex;
 
 use x86_64::{
     instructions::tlb,
+    registers::model_specific::{Efer, EferFlags},
     structures::{
         idt::{ExceptionStackFrame, PageFaultErrorCode},
         paging::{
@@ -41,17 +42,9 @@ const RECURSIVE_IDX: u9 = u9::MAX; // 511
 
 // TODO: virtual address space allocator
 
-/// An implementation of `FrameAllocator` that just panics. This is useful for initial setup stuff
-/// where things are weird and we don't want to automatically allocate any frames.
-struct PanicFrameAllocator;
-
-impl FrameAllocator<Size4KiB> for PanicFrameAllocator {
-    fn alloc(&mut self) -> Option<PhysFrame<Size4KiB>> {
-        panic!("Unexpected allocation of a frame");
-    }
-}
-
-struct PhysBuddyAllocator<'a>(&'a mut BuddyAllocator<usize>); // TODO: clean this up
+// TODO: clean this up. Eventually, we will want this wrapper to be the only thing exposed for page
+// frame allocation.
+struct PhysBuddyAllocator<'a>(&'a mut BuddyAllocator<usize>);
 
 impl<'a> FrameAllocator<Size4KiB> for PhysBuddyAllocator<'a> {
     fn alloc(&mut self) -> Option<PhysFrame<Size4KiB>> {
@@ -95,6 +88,11 @@ pub fn init() {
     // Setup recursive page tables.
     ///////////////////////////////////////////////////////////////////////////
 
+    // Enable the No-Execute bit on page tables.
+    unsafe {
+        Efer::update(|flags| *flags |= EferFlags::NO_EXECUTE_ENABLE);
+    }
+
     // Add recursive mapping
     unsafe {
         page_map_l4[RECURSIVE_IDX].set_addr(
@@ -102,7 +100,8 @@ pub fn init() {
             PageTableFlags::PRESENT
                 | PageTableFlags::WRITABLE
                 | PageTableFlags::NO_CACHE
-                | PageTableFlags::GLOBAL, /*| PageTableFlags::NO_EXECUTE,*/ // TODO: the NXE bit in the EFER register must be set
+                | PageTableFlags::GLOBAL
+                | PageTableFlags::NO_EXECUTE,
         );
     }
 
@@ -205,7 +204,7 @@ pub fn init() {
 /// Handle a page fault
 pub extern "x86-interrupt" fn handle_page_fault(
     esf: &mut ExceptionStackFrame,
-    // TODO: need to pass this in the handler args in asm...
+    // TODO: error code is not getting passed properly
     _error: PageFaultErrorCode,
 ) {
     // Read CR2 to get the page fault address
