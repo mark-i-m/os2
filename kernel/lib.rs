@@ -31,6 +31,17 @@ use time::SysTime;
 #[global_allocator]
 static mut ALLOCATOR: memory::KernelAllocator = memory::KernelAllocator::new();
 
+/// The first page of the kernel heap
+//const KERNEL_HEAP_START: usize = (1<<20);
+const KERNEL_HEAP_START: usize = (1<<20) + (1<<12);
+
+/// The guard page of the kernel heap
+const KERNEL_HEAP_GUARD: u64 = (1<<20);
+
+/// The initial size of the kernel heap
+//const KERNEL_HEAP_SIZE: usize = (1<<20);
+const KERNEL_HEAP_SIZE: usize = (1<<20) - (1<<12);
+
 /// This is the entry point to the kernel. It is the first rust code that runs.
 #[no_mangle]
 pub fn kernel_main() -> ! {
@@ -56,9 +67,14 @@ pub fn kernel_main() -> ! {
     printk!("Interrupts ✔\n");
 
     // Initialize memory
-    // make the kernel heap 3MiB starting at 1MiB.
+    // make the kernel heap 1MiB - 4KiB starting at 1MiB + 4KiB. This extra page will be unmapped
+    // later to protect against heap overflows (unlikely as that is)...
     printk!("Memory ...\n\t");
-    memory::init(unsafe { &mut ALLOCATOR }, 1 << 20, 1 << 20);
+    memory::init(
+        unsafe { &mut ALLOCATOR },
+        /* start */ KERNEL_HEAP_START,
+        /* size */ KERNEL_HEAP_SIZE,
+    );
     printk!("Memory ✔\n");
 
     // Create the init task

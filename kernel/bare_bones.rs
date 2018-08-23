@@ -4,6 +4,8 @@
 
 #![allow(private_no_mangle_fns)]
 
+use alloc::alloc::Layout;
+
 use core::{fmt::Write, panic::PanicInfo};
 
 use debug::Debug;
@@ -45,6 +47,6 @@ fn rust_begin_panic(pi: &PanicInfo) -> ! {
 
 #[lang = "oom"]
 #[no_mangle]
-fn rust_oom() -> ! {
+fn rust_oom(_: Layout) -> ! {
     panic!("OOM!");
 }

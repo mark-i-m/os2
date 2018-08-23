@@ -3,7 +3,7 @@
 //! This module provides an idomatic, safe interface for getting memory regions from the info
 //! output by the E820 BIOS call.
 
-use alloc::{BTreeSet, Vec};
+use alloc::{collections::BTreeSet, vec::Vec};
 use core::ops::Deref;
 
 use x86_64::{
@@ -96,8 +96,7 @@ impl E820Info {
                 }
 
                 pieces
-            })
-            .collect();
+            }).collect();
 
         // Sort by start of region
         info.sort_by_key(|&(start, _, _)| start);
@@ -136,8 +135,7 @@ impl E820Info {
                     (s_page / Size4KiB::SIZE) as usize,
                     (e_page / Size4KiB::SIZE) as usize,
                 )
-            })
-            .filter(|(s, e)| s <= e)
+            }).filter(|(s, e)| s <= e)
             .collect();
 
         E820Info { regions }

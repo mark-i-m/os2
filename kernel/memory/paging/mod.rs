@@ -11,11 +11,13 @@ use spin::Mutex;
 use x86_64::{
     structures::{
         idt::{ExceptionStackFrame, PageFaultErrorCode},
-        paging::{PageSize, PageTable, PageTableFlags, RecursivePageTable, Size4KiB},
+        paging::{Mapper, Page, PageSize, PageTable, PageTableFlags, RecursivePageTable, Size4KiB},
     },
     ux::u9,
-    PhysAddr,
+    PhysAddr, VirtAddr,
 };
+
+use KERNEL_HEAP_GUARD;
 
 use self::e820::E820Info;
 
@@ -37,8 +39,7 @@ const RECURSIVE_IDX: u9 = u9::MAX; // 511
 
 /// Initialize the physical and virtual memory allocators. Setup paging properly.
 ///
-/// Currently, we have a single set of page tables that direct maps the first 2MiB of memory with a
-/// single huge page.
+/// Currently, we have a single set of page tables that direct maps the first 2MiB of memory.
 pub fn init() {
     ///////////////////////////////////////////////////////////////////////////
     // Setup the physical memory allocator with info from E820
@@ -85,11 +86,31 @@ pub fn init() {
     printk!("\tpage tables inited\n");
 
     ///////////////////////////////////////////////////////////////////////////
-    // TODO: Redo paging from the beginning of memory
+    // Redo paging from the beginning of memory
     //  - direct map the beginning memory (no change)
     //  - Page 0 is null, so no mapping
-    //  - The page before the kernel heap is null, so no mapping
+    //  - TODO The page before the kernel heap is null, so no mapping
     ///////////////////////////////////////////////////////////////////////////
+
+    // TODO: sign extention is not happening yet
+
+    // Unmap page 0
+    PAGE_TABLES
+        .lock()
+        .as_mut()
+        .unwrap()
+        .unmap(Page::<Size4KiB>::from_start_address(VirtAddr::new(0)).unwrap())
+        .unwrap();
+
+    // Unmap the page 1MiB (before the kernel heap)
+    /*
+    PAGE_TABLES
+        .lock()
+        .as_mut()
+        .unwrap()
+        .unmap(Page::<Size4KiB>::from_start_address(VirtAddr::new(KERNEL_HEAP_GUARD)).unwrap())
+        .unwrap();
+        */
 
     printk!("\tkernel page tables inited\n");
 
@@ -109,7 +130,7 @@ pub fn init() {
 
 /// Handle a page fault
 pub extern "x86-interrupt" fn handle_page_fault(
-    _esf: &mut ExceptionStackFrame,
+    esf: &mut ExceptionStackFrame,
     _error: PageFaultErrorCode,
 ) {
     // Read CR2 to get the page fault address
@@ -125,5 +146,5 @@ pub extern "x86-interrupt" fn handle_page_fault(
     }
 
     // TODO
-    panic!("Page fault at {:x}", cr2);
+    panic!("Page fault at ip {:x}, addr {:x}", esf.instruction_pointer.as_u64(), cr2);
 }
