@@ -99,8 +99,10 @@ pub fn init() {
     unsafe {
         page_map_l4[RECURSIVE_IDX].set_addr(
             PhysAddr::new((&page_map_l4) as *const PageTable as u64),
-            PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE, /* | PageTableFlags::GLOBAL*/ // TODO: need to set CR4.PGE bit
-                                                                                           /*| PageTableFlags::NO_EXECUTE,*/ // TODO: the NXE bit in the EFER register must be set
+            PageTableFlags::PRESENT
+                | PageTableFlags::WRITABLE
+                | PageTableFlags::NO_CACHE
+                | PageTableFlags::GLOBAL, /*| PageTableFlags::NO_EXECUTE,*/ // TODO: the NXE bit in the EFER register must be set
         );
     }
 
@@ -155,7 +157,7 @@ pub fn init() {
 
             (*page_table)[i as usize].set_addr(
                 PhysAddr::new(i as u64 * (1 << 12)),
-                PageTableFlags::PRESENT | PageTableFlags::WRITABLE, /*| PageTableFlags::GLOBAL,*/ // TODO: need to set CR4.PGE bit
+                PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::GLOBAL,
             );
         }
     }
@@ -168,7 +170,7 @@ pub fn init() {
     unsafe {
         (*page_dir)[0].set_addr(
             PhysAddr::new(new_pt),
-            PageTableFlags::PRESENT | PageTableFlags::WRITABLE, /*| PageTableFlags::GLOBAL,*/ // TODO: need to set CR4.PGE bit
+            PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::GLOBAL,
         );
     }
 

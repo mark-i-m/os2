@@ -55,9 +55,10 @@ kStart32:
 	mov $page_map_l4, %eax
 	mov %eax, %cr3
 
-	// set PAE
+	// set PAE and PGE
 	mov %cr4, %eax
 	or $0x20, %eax
+	or $0x80, %eax
 	mov %eax, %cr4
 
 	// set the long mode bit in EFER MSR
