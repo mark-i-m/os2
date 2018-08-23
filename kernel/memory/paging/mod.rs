@@ -75,13 +75,15 @@ pub fn init() {
             PageTableFlags::PRESENT
                 | PageTableFlags::WRITABLE
                 | PageTableFlags::NO_CACHE
-                | PageTableFlags::GLOBAL
-                | PageTableFlags::NO_EXECUTE,
+                | PageTableFlags::GLOBAL // TODO: need to set CR4.PGE bit
+                | PageTableFlags::NO_EXECUTE, // TODO: the NXE bit in the EFER register must be set
         );
     }
 
     *PAGE_TABLES.lock() =
         Some(unsafe { RecursivePageTable::new_unchecked(&mut page_map_l4, RECURSIVE_IDX) });
+
+    // TODO: flush tlb somewhere?
 
     printk!("\tpage tables inited\n");
 
@@ -90,17 +92,23 @@ pub fn init() {
     //  - direct map the beginning memory (no change)
     //  - Page 0 is null, so no mapping
     //  - TODO The page before the kernel heap is null, so no mapping
+    //
+    // NOTE: QEMU doesn't report signed extended mappings with `info mem`, but they are indeed
+    // happening.
     ///////////////////////////////////////////////////////////////////////////
 
-    // TODO: sign extention is not happening yet
+    // TODO: We cannot just unmap the first page of memory because currently, we are executing on
+    // that first 2MiB huge page. Instead, we need to create a page table that direct maps the
+    // first 2MiB except for the 0-th page (null). Then we can just change the page table entry in
+    // the PD to point to the new page table.
 
     // Unmap page 0
-    PAGE_TABLES
-        .lock()
-        .as_mut()
-        .unwrap()
-        .unmap(Page::<Size4KiB>::from_start_address(VirtAddr::new(0)).unwrap())
-        .unwrap();
+    //PAGE_TABLES
+    //    .lock()
+    //    .as_mut()
+    //    .unwrap()
+    //    .unmap(Page::<Size4KiB>::from_start_address(VirtAddr::new(0)).unwrap())
+    //    .unwrap();
 
     // Unmap the page 1MiB (before the kernel heap)
     /*
@@ -131,7 +139,7 @@ pub fn init() {
 /// Handle a page fault
 pub extern "x86-interrupt" fn handle_page_fault(
     esf: &mut ExceptionStackFrame,
-    _error: PageFaultErrorCode,
+    error: PageFaultErrorCode,
 ) {
     // Read CR2 to get the page fault address
     let cr2: usize;
@@ -146,5 +154,10 @@ pub extern "x86-interrupt" fn handle_page_fault(
     }
 
     // TODO
-    panic!("Page fault at ip {:x}, addr {:x}", esf.instruction_pointer.as_u64(), cr2);
+    panic!(
+        "Page fault at ip {:x}, addr {:x}, error code {:x}",
+        esf.instruction_pointer.as_u64(),
+        cr2,
+        error
+    );
 }
