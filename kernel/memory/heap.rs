@@ -57,3 +57,8 @@ pub fn init(allocator: &mut KernelAllocator, start: usize, size: usize) {
         free_size
     );
 }
+
+#[alloc_error_handler]
+fn oom(_: Layout) -> ! {
+    panic!("OOM!");
+}

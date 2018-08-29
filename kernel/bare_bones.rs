@@ -39,9 +39,3 @@ fn rust_begin_panic(pi: &PanicInfo) -> ! {
     #[allow(clippy::empty_loop)]
     loop {}
 }
-
-#[lang = "oom"]
-#[no_mangle]
-fn rust_oom(_: Layout) -> ! {
-    panic!("OOM!");
-}
