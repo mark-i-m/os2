@@ -13,7 +13,6 @@ TARGET_JSON = x86_64-unknown-elf.json
 RUSTOPT =
 ASOPT = -O0 -g
 
-RUSTFLAGS = "-Z no-landing-pads"
 ASFLAGS += -m64 ${ASOPT}
 
 # Build up cargo flags
@@ -42,7 +41,7 @@ all: kernel.img
 	${CC} ${ASFLAGS} -c -o $@ $<
 
 libkernel.a: ${RUSTFILES} Cargo.toml Makefile
-	RUSTFLAGS=${RUSTFLAGS} cargo xbuild  ${CARGO_FLAGS}
+	cargo xbuild  ${CARGO_FLAGS}
 
 %.bin: %
 	${OBJCOPY} -O binary $< $@
