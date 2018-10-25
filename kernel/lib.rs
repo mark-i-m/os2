@@ -1,15 +1,12 @@
 #![feature(
     lang_items,
     asm,
-    start,
-    const_fn,
-    naked_functions,
     alloc,
+    alloc_error_handler,
     box_syntax,
     abi_x86_interrupt,
     panic_info_message,
-    drain_filter,
-    alloc_error_handler
+    drain_filter
 )]
 // Compile without libstd
 #![no_std]
