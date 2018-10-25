@@ -1,6 +1,6 @@
 //! This module contains everything needed for interrupts
 
-use x86_64::structures::idt::{ExceptionStackFrame, Idt};
+use x86_64::structures::idt::{ExceptionStackFrame, InterruptDescriptorTable};
 
 pub use self::pit::HZ as PIT_HZ;
 pub use self::tss::init as tss_init;
@@ -14,7 +14,7 @@ mod tss;
 /// Imports that are defined at boot
 #[allow(improper_ctypes)]
 extern "C" {
-    pub static mut idt64: Idt;
+    pub static mut idt64: InterruptDescriptorTable;
 }
 
 /// Initialize interrupts (and exceptions).

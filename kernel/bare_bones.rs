@@ -2,8 +2,6 @@
 //! otherwise provide. Most importantly, it defines `rust_begin_unwind` which is
 //! used by `panic!`.
 
-#![allow(private_no_mangle_fns)]
-
 use alloc::alloc::Layout;
 
 use core::{fmt::Write, panic::PanicInfo};
@@ -11,13 +9,8 @@ use core::{fmt::Write, panic::PanicInfo};
 use debug::Debug;
 use x86_64::instructions::interrupts;
 
-// For bare-bones rust
-#[lang = "eh_personality"]
-#[no_mangle]
-fn eh_personality() {}
-
 /// This function is used by `panic!` to display an error message.
-#[panic_implementation]
+#[panic_handler]
 #[no_mangle]
 fn rust_begin_panic(pi: &PanicInfo) -> ! {
     // we should no be interrupting any more
