@@ -1,6 +1,11 @@
 #![feature(
-    lang_items, asm, start, const_fn, naked_functions, alloc, allocator_api, box_syntax,
-    abi_x86_interrupt, panic_implementation, panic_info_message, drain_filter
+    lang_items,
+    asm,
+    alloc,
+    box_syntax,
+    abi_x86_interrupt,
+    panic_info_message,
+    drain_filter
 )]
 // Compile without libstd
 #![no_std]
@@ -33,14 +38,14 @@ static mut ALLOCATOR: memory::KernelAllocator = memory::KernelAllocator::new();
 
 /// The first page of the kernel heap
 //const KERNEL_HEAP_START: usize = (1<<20);
-const KERNEL_HEAP_START: usize = (1<<20) + (1<<12);
+const KERNEL_HEAP_START: usize = (1 << 20) + (1 << 12);
 
 /// The guard page of the kernel heap
-const KERNEL_HEAP_GUARD: u64 = (1<<20);
+const KERNEL_HEAP_GUARD: u64 = (1 << 20);
 
 /// The initial size of the kernel heap
 //const KERNEL_HEAP_SIZE: usize = (1<<20);
-const KERNEL_HEAP_SIZE: usize = (1<<20) - (1<<12);
+const KERNEL_HEAP_SIZE: usize = (1 << 20) - (1 << 12);
 
 /// This is the entry point to the kernel. It is the first rust code that runs.
 #[no_mangle]
