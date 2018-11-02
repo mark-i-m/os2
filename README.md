@@ -16,6 +16,8 @@ including dependencies). Not bad!
 
 - Small kernel heap for dynamic memory allocation.
 
+- Buddy allocator for physical frame allocation.
+
 # Building
 
 - rust, nightly
@@ -36,8 +38,6 @@ $ make runtext
 ```
 
 # TODO/WIP
-
-- Buddy allocator for physical frame allocation.
 
 - Kernel reserves a large amount of virtual address space for its own use.
 
