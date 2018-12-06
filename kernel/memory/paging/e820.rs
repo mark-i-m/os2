@@ -88,7 +88,7 @@ impl E820Info {
             .flat_map(|(start, end, ty)| {
                 let mid: Vec<u64> = endpoints
                     .iter()
-                    .map(|&x| x)
+                    .cloned()
                     .filter(|&point| point >= start && point <= end)
                     .collect();
                 let mut pieces = Vec::new();
@@ -112,7 +112,7 @@ impl E820Info {
                 .iter()
                 .all(|&(s, e, ty)| s < e && ty == E820_MEMORY_USABLE);
 
-            if same_start.len() > 0 && all_usable {
+            if !same_start.is_empty() && all_usable {
                 // (same_start() will be empty for the last endpoint)
                 regions.push(
                     same_start

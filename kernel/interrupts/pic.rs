@@ -59,7 +59,7 @@ pub fn init() {
     idt_mut.reset();
 
     // Set up basic interrupts
-    idt_mut[FIRST_IDT as usize + 0x0].set_handler_fn(irq_0);
+    idt_mut[FIRST_IDT as usize].set_handler_fn(irq_0);
     idt_mut[FIRST_IDT as usize + 0x1].set_handler_fn(irq_1);
     idt_mut[FIRST_IDT as usize + 0x2].set_handler_fn(irq_2);
     idt_mut[FIRST_IDT as usize + 0x3].set_handler_fn(irq_3);

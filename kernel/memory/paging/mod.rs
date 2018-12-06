@@ -140,7 +140,8 @@ pub fn init() {
             PhysFrame::from_start_address(PhysAddr::new(new_pt)).unwrap(),
             PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE,
             &mut PhysBuddyAllocator(pmem_alloc.as_mut().unwrap()),
-        ).unwrap();
+        )
+        .unwrap();
 
     // Update the PT with the new mappings for the first 2MiB.
     let page_table = new_pt_page.start_address().as_mut_ptr() as *mut PageTable;
@@ -148,14 +149,12 @@ pub fn init() {
         (*page_table).zero();
 
         for i in 0u16..=(u9::MAX.into()) {
-            if i == 0 {
-                continue;
-            } else if i as u64 * (1 << 12) == KERNEL_HEAP_GUARD {
+            if i == 0 || u64::from(i) * (1 << 12) == KERNEL_HEAP_GUARD {
                 continue;
             }
 
             (*page_table)[i as usize].set_addr(
-                PhysAddr::new(i as u64 * (1 << 12)),
+                PhysAddr::new(u64::from(i) * (1 << 12)),
                 PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::GLOBAL,
             );
         }
@@ -210,7 +209,7 @@ pub extern "x86-interrupt" fn handle_page_fault(
     // Read CR2 to get the page fault address
     let cr2: usize;
     unsafe {
-        asm!{
+        asm! {
             "movq %cr2, $0"
              : "=r"(cr2)
              : /* no input */

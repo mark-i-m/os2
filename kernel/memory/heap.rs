@@ -31,7 +31,7 @@ unsafe impl GlobalAlloc for KernelAllocator {
             .unwrap()
             .malloc(layout.size(), layout.align())
             .map(|p| p.as_ptr() as *mut u8)
-            .unwrap_or(0 as *mut u8)
+            .unwrap_or(core::ptr::null_mut())
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {

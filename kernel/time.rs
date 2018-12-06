@@ -34,7 +34,7 @@ impl SysTime {
     */
 
     /// Get the time `secs` seconds after `self`.
-    pub fn after(&self, secs: usize) -> Self {
+    pub fn after(self, secs: usize) -> Self {
         SysTime(self.0 + secs * PIT_HZ)
     }
 }

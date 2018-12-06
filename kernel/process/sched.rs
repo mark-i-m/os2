@@ -37,9 +37,7 @@ impl Scheduler {
     /// continuation exists or no continuation is ready, return None.
     pub fn next(&mut self) -> Option<(Event, Continuation)> {
         // No continuation
-        if self.next.is_none() {
-            return None;
-        }
+        self.next.as_ref()?;
 
         // There is a continuation, but is it ready?
         let desired_eventkind = self.next.as_ref().unwrap().0;
@@ -50,12 +48,14 @@ impl Scheduler {
             EventKind::Now => Some((Event::Now, self.next.take().unwrap().1)),
 
             // Timer events? Is the requested time here?
-            EventKind::Until(time) => if SysTime::now() >= time {
-                // ready!
-                Some((Event::Timer, self.next.take().unwrap().1))
-            } else {
-                None
-            },
+            EventKind::Until(time) => {
+                if SysTime::now() >= time {
+                    // ready!
+                    Some((Event::Timer, self.next.take().unwrap().1))
+                } else {
+                    None
+                }
+            }
 
             // Waiting for kbd input?
             EventKind::Keyboard => unimplemented!(), // TODO
@@ -140,7 +140,7 @@ pub fn sched() -> ! {
 /// already switched to the new stack. This is done so that the compiler knows that no state should
 /// be carried over, so we cannot lose any important stack variables (e.g. locks).
 unsafe fn sched_part_2_thunk(rsp: usize) -> ! {
-    asm!{
+    asm! {
         "
         movq $0, %rsp
         movq $0, %rbp

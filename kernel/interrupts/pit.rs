@@ -6,7 +6,7 @@ use x86_64::{
 };
 
 /// Max frequency of the PIT
-const MAX_HZ: usize = 1193182;
+const MAX_HZ: usize = 1_193_182;
 
 /// The frequency of the PIT
 pub const HZ: usize = 1000;
@@ -38,7 +38,7 @@ pub fn init() {
         // 00 (channel 0)
         // 110 (lobyte/hibyte)
         // 100 (rate generator)
-        let cmd = 0b00110100u8;
+        let cmd = 0b_0011_0100_u8;
 
         // write commmand
         PIT_CMD.write(cmd);
