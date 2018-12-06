@@ -8,7 +8,8 @@ including dependencies). Not bad!
 - No timer-based preemption, no locks, no multi-threading in userspace. Every
   process is single threaded and continuation-based. Each `Continuation` can
   return another continuation, an error, or nothing. Continuations can also
-  wait for events, such as I/O or another process's termination.
+  wait for events, such as I/O or another process's termination. (Userspace is
+  still TODO)
 
 - Single address space. All executables need to be position-independent. (TODO)
 
