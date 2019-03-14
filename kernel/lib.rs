@@ -30,6 +30,8 @@ mod memory;
 mod process;
 mod time;
 
+use alloc::vec;
+
 use continuation::{ContResult, Continuation, EventKind};
 use time::SysTime;
 
@@ -87,13 +89,13 @@ pub fn kernel_main() -> ! {
     printk!("Taskes");
     process::init(Continuation::new(|_| {
         printk!("Init task running!\n");
-        ContResult::Success(
+        ContResult::Success(vec![(
             EventKind::Until(SysTime::now().after(4)),
             Continuation::new(|_| {
                 printk!("Init waited for 4 seconds! Success 🎉\n");
                 ContResult::Done
             }),
-        )
+        )])
     }));
     printk!(" ✔\n");
 

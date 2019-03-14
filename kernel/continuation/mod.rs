@@ -1,6 +1,6 @@
 //! A module for defining continuations and events
 
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec, vec::Vec};
 
 use process::sched;
 use time::SysTime;
@@ -37,7 +37,7 @@ pub enum Event {
 #[allow(dead_code)]
 pub enum ContResult {
     /// The continuation suceeded and the next continuation and its precondition are given.
-    Success(EventKind, Continuation),
+    Success(Vec<(EventKind, Continuation)>),
 
     /// The Continuation failed and here is the continuation to handle the error.
     Error(Continuation),
@@ -75,10 +75,10 @@ impl Continuation {
         // run this continuation, and enqueue the result
         match (self.routine.take().unwrap())(event) {
             // schedule the continuation
-            ContResult::Success(eventkind, cont) => sched::enqueue(eventkind, cont),
+            ContResult::Success(cont) => sched::enqueue(cont),
 
             // schedule the error continuation with the error event
-            ContResult::Error(cont) => sched::enqueue(EventKind::Now, cont),
+            ContResult::Error(cont) => sched::enqueue(vec![(EventKind::Now, cont)]),
 
             // if they are done, the continuation is the idle continuation
             ContResult::Done => sched::idle(),

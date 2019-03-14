@@ -1,6 +1,6 @@
 //! The scheduler
 
-use alloc::boxed::Box;
+use alloc::{boxed::Box, collections::linked_list::LinkedList, vec, vec::Vec};
 
 use core::{borrow::Borrow, mem};
 
@@ -18,9 +18,9 @@ static SCHEDULER: Mutex<Option<Scheduler>> = Mutex::new(None);
 
 /// The kernel task scheduler
 struct Scheduler {
-    /// The next continuation to be run. Notice that since each task is single threaded, there can
-    /// be at most one.
-    next: Option<(EventKind, Continuation)>,
+    /// The list of outstanding continuations that have yet to be scheduled, along with the event
+    /// each one is waiting on.
+    next: LinkedList<(EventKind, Continuation)>,
 
     // Because every core is single-threaded, we only need one stack. After a task executes, we can
     // just clean it up and reuse it. However, to make life a bit easier, we just allocate two
@@ -36,40 +36,34 @@ impl Scheduler {
     /// Get the next continuation to run along with the `Event` that it was waiting for. If no
     /// continuation exists or no continuation is ready, return None.
     pub fn next(&mut self) -> Option<(Event, Continuation)> {
-        // No continuation
-        self.next.as_ref()?;
+        // Iterate through all current outstanding tasks. Choose the first one that is ready.
+        for _ in 0..self.next.len() {
+            match self.next.pop_front()? {
+                // Not waiting? Great!
+                (EventKind::Now, cont) => return Some((Event::Now, cont)),
 
-        // There is a continuation, but is it ready?
-        let desired_eventkind = self.next.as_ref().unwrap().0;
-
-        // Depending on the type of event, we do different things to determine if it is ready
-        match desired_eventkind {
-            // Not waiting? Great!
-            EventKind::Now => Some((Event::Now, self.next.take().unwrap().1)),
-
-            // Timer events? Is the requested time here?
-            EventKind::Until(time) => {
-                if SysTime::now() >= time {
-                    // ready!
-                    Some((Event::Timer, self.next.take().unwrap().1))
-                } else {
-                    None
+                // Timer events? Is the requested time here?
+                (EventKind::Until(time), cont) => {
+                    if SysTime::now() >= time {
+                        return Some((Event::Timer, cont));
+                    } else {
+                        // Not ready; put it back.
+                        self.next.push_back((EventKind::Until(time), cont));
+                    }
                 }
-            }
 
-            // Waiting for kbd input?
-            EventKind::Keyboard => unimplemented!(), // TODO
+                // Waiting for kbd input?
+                (EventKind::Keyboard, _cont) => unimplemented!(), // TODO
+            }
         }
+
+        // Didn't find anything (ready)...
+        None
     }
 
-    /// Set the next continuation to run along with the event kind it is waiting for.
-    ///
-    /// # Panics
-    ///
-    /// If there is already a continuation scheduled.
-    pub fn set_next(&mut self, eventkind: EventKind, cont: Continuation) {
-        assert!(self.next.is_none());
-        self.next = Some((eventkind, cont));
+    /// Enqueue the given list of continuations.
+    pub fn enqueue(&mut self, mut cont: Vec<(EventKind, Continuation)>) {
+        self.next.extend(cont.drain(..));
     }
 }
 
@@ -105,9 +99,12 @@ impl Stack {
 pub fn init(init: Continuation) {
     let mut s = SCHEDULER.lock();
 
+    let mut next = LinkedList::new();
+    next.push_back((EventKind::Now, init));
+
     // Create the scheduler
     *s = Some(Scheduler {
-        next: Some((EventKind::Now, init)),
+        next,
         current_stack: Stack::new(),
         clean_stack: Stack::new(),
     });
@@ -178,9 +175,9 @@ unsafe fn sched_part_3() -> ! {
     next.run(event)
 }
 
-/// Enqueue the given continuation in the scheduler.
-pub fn enqueue(eventkind: EventKind, cont: Continuation) {
-    SCHEDULER.lock().as_mut().unwrap().set_next(eventkind, cont);
+/// Enqueue the given list of continuations in the scheduler.
+pub fn enqueue(cont: Vec<(EventKind, Continuation)>) {
+    SCHEDULER.lock().as_mut().unwrap().enqueue(cont);
 }
 
 /// Returns the idle continuation.
@@ -194,5 +191,5 @@ pub fn make_idle_cont() -> Continuation {
 /// else if possible.
 pub fn idle() {
     let cont = make_idle_cont();
-    enqueue(EventKind::Now, cont);
+    enqueue(vec![(EventKind::Now, cont)]);
 }
