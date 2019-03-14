@@ -6,7 +6,7 @@ use alloc::collections::linked_list::LinkedList;
 
 use spin::Mutex;
 
-use x86_64::instructions::port::Port;
+use x86_64::instructions::{interrupts::without_interrupts, port::Port};
 
 /// The difference between a capital and lowercase
 const CAP: u8 = ('a' as u8) - ('A' as u8);
@@ -104,5 +104,7 @@ pub fn init() {
 
 /// Return the first buffered character.
 pub fn kbd_next() -> Option<u8> {
-    KBD_BUFFER.lock().as_mut().unwrap().pop_front()
+    // Without interrupts to avoid deadlocks because the keyboard handler grabs a lock. Yeah, I
+    // know. So sue me.
+    without_interrupts(|| KBD_BUFFER.lock().as_mut().unwrap().pop_front())
 }
