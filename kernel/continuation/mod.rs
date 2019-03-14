@@ -15,7 +15,6 @@ pub enum EventKind {
     /// Wait for keyboard input.
     Keyboard,
 
-    // TODO: implement this
     /// Wait for the system "clock" to have a given reading.
     Until(SysTime),
 }
