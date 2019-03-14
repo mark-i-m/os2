@@ -2,8 +2,6 @@
 //! otherwise provide. Most importantly, it defines `rust_begin_unwind` which is
 //! used by `panic!`.
 
-use alloc::alloc::Layout;
-
 use core::{fmt::Write, panic::PanicInfo};
 
 use debug::Debug;
