@@ -53,7 +53,14 @@ impl Scheduler {
                 }
 
                 // Waiting for kbd input?
-                (EventKind::Keyboard, _cont) => unimplemented!(), // TODO
+                (EventKind::Keyboard, cont) => {
+                    if let Some(c) = crate::io::kbd::kbd_next() {
+                        return Some((Event::Keyboard(c), cont));
+                    } else {
+                        // Not ready; put it back.
+                        self.next.push_back((EventKind::Keyboard, cont));
+                    }
+                }
             }
         }
 

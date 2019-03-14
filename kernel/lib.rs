@@ -26,6 +26,7 @@ mod debug;
 mod bare_bones;
 mod continuation;
 mod interrupts;
+mod io;
 mod memory;
 mod process;
 mod time;
@@ -84,6 +85,11 @@ pub fn kernel_main() -> ! {
         /* size */ KERNEL_HEAP_SIZE,
     );
     printk!("Memory ✔\n");
+
+    // I/O
+    printk!("I/O ...\n\t");
+    io::init();
+    printk!("I/O ✔\n");
 
     // Create the init task
     printk!("Taskes");

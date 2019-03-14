@@ -109,7 +109,7 @@ fn pic_irq(irq: usize, _: &mut ExceptionStackFrame) {
 
         // Keyboard interrupts
         1 => {
-            unimplemented!();
+            unsafe { crate::io::kbd::handler() };
         }
 
         // Processor and FPU interrupts
