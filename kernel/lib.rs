@@ -33,7 +33,7 @@ mod time;
 
 use alloc::vec;
 
-use continuation::{ContResult, Continuation, EventKind};
+use continuation::{ContResult, Continuation, Event, EventKind};
 use time::SysTime;
 
 /// The kernel heap
@@ -99,7 +99,17 @@ pub fn kernel_main() -> ! {
             EventKind::Until(SysTime::now().after(4)),
             Continuation::new(|_| {
                 printk!("Init waited for 4 seconds! Success 🎉\n");
-                ContResult::Done
+                ContResult::Success(vec![(
+                    EventKind::Keyboard,
+                    Continuation::new(|ev| {
+                        if let Event::Keyboard(c) = ev {
+                            printk!("User typed '{}'", c as char);
+                        } else {
+                            unreachable!();
+                        }
+                        ContResult::Done
+                    }),
+                )])
             }),
         )])
     }));
