@@ -190,6 +190,9 @@ pub fn enqueue(cont: Vec<(EventKind, Continuation)>) {
 /// Returns the idle continuation.
 pub fn make_idle_cont() -> Continuation {
     Continuation::new(|_| {
+        // Wait a bit before rescheduling
+        x86_64::instructions::hlt();
+
         sched();
     })
 }
