@@ -1,8 +1,7 @@
 //! All things related to virtual memory.
 //!
 //! Virtual memory is laid out as follows:
-//! - Single address space: everything lives in the same address space.
-//! - The kernel reserves the beginning of memory.
+//! - Single address space (48-bits): everything lives in the same address space.
 //! - The first page is null.
 //! - Addresses Page 1 to 1MB: kernel text
 //! - Page 1MB: heap guard page (to defend against heap errors spilling into the kernel text)
@@ -37,6 +36,14 @@ use self::e820::E820Info;
 /// The kernel's physical frame allocator. It returns frame numbers, not physical addresses.
 static PHYS_MEM_ALLOC: Mutex<Option<BuddyAllocator<usize>>> = Mutex::new(None);
 
+/// The kernel's virtual memory allocator. It returns page numbers, not virtual addresses. This
+/// allocator assigns parts of the 48-bit single address space when asked.
+static VIRT_MEM_ALLOC: Mutex<Option<BuddyAllocator<usize>>> = Mutex::new(None);
+
+// TODO: use a Btreemap to store the assigned address ranges (like vm_area_structs). Probably kinda
+// boring to implement compaction like Linux does with vm_area_structs, so let's just be
+// inefficient...
+
 extern "C" {
     /// The root PML4 for the system.
     static mut page_map_l4: PageTable;
@@ -51,7 +58,24 @@ const RECURSIVE_IDX: u9 = u9::MAX; // 511
 /// The amount to extend the kernel heap by during init.
 const KERNEL_HEAP_EXTEND: u64 = 1 << 20; // 1MB
 
-// TODO: virtual address space allocator
+/// The number of bits of virtual address space.
+const ADDRESS_SPACE_WIDTH: u8 = 48;
+
+/// The available virtual address ranges, excluding areas used by the kernel (`[start, end]`).
+const VIRT_ADDR_AVAILABLE: &[(usize, usize)] = &[
+    // Lower half - kernel
+    (
+        KERNEL_HEAP_START + KERNEL_HEAP_SIZE + KERNEL_HEAP_EXTEND as usize,
+        (1 << (ADDRESS_SPACE_WIDTH - 1)) - 1,
+    ),
+    // Higher half
+    //
+    // NOTE: unfortunately, `buddy` is buggy and doesn't handle overflows correctly, so the upper
+    // half address cause it to overflow. Thus, we discard half of the address space as a quick
+    // fix. This is probably ok (though disappointing) because we still have ~128TiB of address
+    // space.
+    //(!((1 << (ADDRESS_SPACE_WIDTH - 1)) - 1), core::usize::MAX),
+];
 
 // TODO: clean this up. Eventually, we will want this wrapper to be the only thing exposed for page
 // frame allocation.
@@ -83,7 +107,10 @@ pub fn init() {
     // Decide how many tiers the allocator should have (rough estimate of log)
     let nbins = (8 * mem::size_of::<usize>()) as u8 - (e820.num_phys_pages().leading_zeros() as u8);
 
-    // Create the allocator
+    // Create the allocator.
+    //
+    // It's ok for us to just hold this lock because we don't expect to have any page faults during
+    // this function's execution.
     let mut pmem_alloc = PHYS_MEM_ALLOC.lock();
     *pmem_alloc = Some(BuddyAllocator::new(nbins));
 
@@ -228,9 +255,17 @@ pub fn init() {
     printk!("\theap extended\n");
 
     ///////////////////////////////////////////////////////////////////////////
-    // TODO: set up the virtual address space allocator with 48-bits of virtual memory. Reserve the
+    // Set up the virtual address space allocator with 48-bits of virtual memory. Reserve the
     // kernel's space at the beginning of memory.
     ///////////////////////////////////////////////////////////////////////////
+
+    let mut vmem_alloc = VIRT_MEM_ALLOC.lock();
+    *vmem_alloc = Some(BuddyAllocator::new(ADDRESS_SPACE_WIDTH));
+
+    for (start, end) in VIRT_ADDR_AVAILABLE {
+        printk!("\tadd virt addrs [{:16X}, {:16X}]\n", start, end);
+        vmem_alloc.as_mut().unwrap().extend(*start, *end);
+    }
 
     printk!("\tvirtual address allocator inited\n");
 }
