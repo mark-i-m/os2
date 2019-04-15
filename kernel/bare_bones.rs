@@ -5,7 +5,7 @@
 use core::{fmt::Write, panic::PanicInfo};
 
 use debug::Debug;
-use x86_64::instructions::interrupts;
+use x86_64::instructions::{hlt, interrupts};
 
 /// This function is used by `panic!` to display an error message.
 #[panic_handler]
@@ -35,5 +35,7 @@ fn rust_begin_panic(pi: &PanicInfo) -> ! {
     printk!("\n===========================\n");
 
     #[allow(clippy::empty_loop)]
-    loop {}
+    loop {
+        hlt(); // Don't just spin... wait a bit
+    }
 }
