@@ -1,4 +1,12 @@
 //! All things related to virtual memory.
+//!
+//! Virtual memory is laid out as follows:
+//! - Single address space: everything lives in the same address space.
+//! - The kernel reserves the beginning of memory.
+//! - The first page is null.
+//! - Addresses Page 1 to 1MB: kernel text
+//! - Page 1MB: heap guard page (to defend against heap errors spilling into the kernel text)
+//! - Page 1MB+1page to 3MB: kernel heap (initially 1MB but extended to a size of 2MB)
 
 mod e820;
 
@@ -40,6 +48,9 @@ static PAGE_TABLES: Mutex<Option<RecursivePageTable>> = Mutex::new(None);
 /// Recursive page table index.
 const RECURSIVE_IDX: u9 = u9::MAX; // 511
 
+/// The amount to extend the kernel heap by during init.
+const KERNEL_HEAP_EXTEND: u64 = 1 << 20; // 1MB
+
 // TODO: virtual address space allocator
 
 // TODO: clean this up. Eventually, we will want this wrapper to be the only thing exposed for page
@@ -54,9 +65,13 @@ impl<'a> FrameAllocator<Size4KiB> for PhysBuddyAllocator<'a> {
     }
 }
 
-/// Initialize the physical and virtual memory allocators. Setup paging properly.
+/// Initialize the physical and virtual memory allocators. Set up paging properly.
 ///
-/// Currently, we have a single set of page tables that direct maps the first 2MiB of memory.
+/// Before this, we have a single set of page tables that direct maps the first 2MiB of memory.
+///
+/// Afterwards, we have set up the phyiscal memory allocator, set up page tables for the single
+/// address space, set up the null page, extend the kernel heap, set up the virtual memory
+/// allocator for the single address space, and reserve the kernel virtual memory area.
 pub fn init() {
     ///////////////////////////////////////////////////////////////////////////
     // Setup the physical memory allocator with info from E820
@@ -187,8 +202,28 @@ pub fn init() {
     printk!("\tkernel page tables inited\n");
 
     ///////////////////////////////////////////////////////////////////////////
-    // TODO: Extend the direct-mapped section after the kernel heap, and extend the kernel heap
+    // Extend the direct-mapped section after the kernel heap, and extend the kernel heap
     ///////////////////////////////////////////////////////////////////////////
+
+    let current_heap_end = (KERNEL_HEAP_START + KERNEL_HEAP_SIZE) as u64;
+    {
+        let mut pt = PAGE_TABLES.lock();
+        for i in 0..(KERNEL_HEAP_EXTEND >> 12) {
+            <_ as Mapper<Size4KiB>>::identity_map(
+                pt.as_mut().unwrap(),
+                PhysFrame::from_start_address(PhysAddr::new(current_heap_end + (i << 12))).unwrap(),
+                PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::GLOBAL,
+                &mut PhysBuddyAllocator(pmem_alloc.as_mut().unwrap()),
+            )
+            .unwrap()
+            .flush();
+        }
+    } // lock drops
+
+    // Make sure that there are no concurrent allocations
+    x86_64::instructions::interrupts::without_interrupts(|| unsafe {
+        crate::ALLOCATOR.extend(current_heap_end as *mut u8, KERNEL_HEAP_EXTEND as usize)
+    });
 
     printk!("\theap extended\n");
 
@@ -203,7 +238,8 @@ pub fn init() {
 /// Handle a page fault
 pub extern "x86-interrupt" fn handle_page_fault(
     esf: &mut ExceptionStackFrame,
-    // TODO: error code is not getting passed properly
+    // TODO: Fault frame and interrupt frame are not the same, but the stack should ccontain the
+    // correct error code.
     _error: PageFaultErrorCode,
 ) {
     // Read CR2 to get the page fault address

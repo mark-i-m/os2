@@ -21,6 +21,10 @@ impl KernelAllocator {
     pub fn set_heap(&mut self, heap: Allocator) {
         *self.heap.borrow_mut() = Some(heap);
     }
+
+    pub unsafe fn extend(&mut self, start: *mut u8, size: usize) {
+        self.heap.borrow_mut().as_mut().unwrap().extend(start, size)
+    }
 }
 
 unsafe impl GlobalAlloc for KernelAllocator {
