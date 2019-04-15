@@ -32,7 +32,7 @@ rungraphic:
 
 rundebug: KERNELDEBUG = -s -S
 rundebug: KERNELSERIAL = -nographic
-rundebug: clean run
+rundebug: run
 
 # clean
 clean:
