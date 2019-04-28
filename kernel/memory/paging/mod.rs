@@ -19,7 +19,7 @@ use x86_64::{
     instructions::tlb,
     registers::model_specific::{Efer, EferFlags},
     structures::{
-        idt::{ExceptionStackFrame, PageFaultErrorCode},
+        idt::{InterruptStackFrame, PageFaultErrorCode},
         paging::{
             FrameAllocator, Mapper, Page, PageSize, PageTable, PageTableFlags, PhysFrame,
             RecursivePageTable, Size4KiB,
@@ -82,7 +82,7 @@ const VIRT_ADDR_AVAILABLE: &[(usize, usize)] = &[
 struct PhysBuddyAllocator<'a>(&'a mut BuddyAllocator<usize>);
 
 impl<'a> FrameAllocator<Size4KiB> for PhysBuddyAllocator<'a> {
-    fn alloc(&mut self) -> Option<PhysFrame<Size4KiB>> {
+    fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
         self.0.alloc(1).map(|f| {
             PhysFrame::from_start_address(PhysAddr::new(f as u64 * Size4KiB::SIZE)).unwrap()
         })
@@ -173,17 +173,19 @@ pub fn init() {
     // We need to map the new PT somewhere so that we can update it.
     let new_pt_page =
         Page::from_page_table_indices(u9::new(0), u9::new(0), u9::new(0xA), u9::new(0));
-    let _ = PAGE_TABLES
-        .lock()
-        .as_mut()
-        .unwrap()
-        .map_to(
-            new_pt_page,
-            PhysFrame::from_start_address(PhysAddr::new(new_pt)).unwrap(),
-            PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE,
-            &mut PhysBuddyAllocator(pmem_alloc.as_mut().unwrap()),
-        )
-        .unwrap();
+    unsafe {
+        let _ = PAGE_TABLES
+            .lock()
+            .as_mut()
+            .unwrap()
+            .map_to(
+                new_pt_page,
+                PhysFrame::from_start_address(PhysAddr::new(new_pt)).unwrap(),
+                PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE,
+                &mut PhysBuddyAllocator(pmem_alloc.as_mut().unwrap()),
+            )
+            .unwrap();
+    }
 
     // Update the PT with the new mappings for the first 2MiB.
     let page_table = new_pt_page.start_address().as_mut_ptr() as *mut PageTable;
@@ -236,14 +238,17 @@ pub fn init() {
     {
         let mut pt = PAGE_TABLES.lock();
         for i in 0..(KERNEL_HEAP_EXTEND >> 12) {
-            <_ as Mapper<Size4KiB>>::identity_map(
-                pt.as_mut().unwrap(),
-                PhysFrame::from_start_address(PhysAddr::new(current_heap_end + (i << 12))).unwrap(),
-                PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::GLOBAL,
-                &mut PhysBuddyAllocator(pmem_alloc.as_mut().unwrap()),
-            )
-            .unwrap()
-            .flush();
+            unsafe {
+                <_ as Mapper<Size4KiB>>::identity_map(
+                    pt.as_mut().unwrap(),
+                    PhysFrame::from_start_address(PhysAddr::new(current_heap_end + (i << 12)))
+                        .unwrap(),
+                    PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::GLOBAL,
+                    &mut PhysBuddyAllocator(pmem_alloc.as_mut().unwrap()),
+                )
+                .unwrap()
+                .flush();
+            }
         }
     } // lock drops
 
@@ -272,8 +277,8 @@ pub fn init() {
 
 /// Handle a page fault
 pub extern "x86-interrupt" fn handle_page_fault(
-    esf: &mut ExceptionStackFrame,
-    // TODO: Fault frame and interrupt frame are not the same, but the stack should ccontain the
+    esf: &mut InterruptStackFrame,
+    // TODO: Fault frame and interrupt frame are not the same, but the stack should contain the
     // correct error code.
     _error: PageFaultErrorCode,
 ) {

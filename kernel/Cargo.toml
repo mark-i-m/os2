@@ -19,5 +19,5 @@ rlibc = "1.0.0"
 spin = "0.4.8"
 smallheap = { git = "https://github.com/mark-i-m/smallheap", features = ["no_std"] }
 buddy = { git = "https://github.com/mark-i-m/buddy" }
-x86_64 = "0.2.11"
+x86_64 = "0.5.2"
 os_bootinfo = "0.2.1"

@@ -2,7 +2,7 @@
 
 use x86_64::{
     instructions::{interrupts, port::Port},
-    structures::idt::ExceptionStackFrame,
+    structures::idt::InterruptStackFrame,
 };
 
 use time; // the most epic import statement ever written!
@@ -98,7 +98,7 @@ fn pic_eoi(irq: u8) {
 ///
 /// Note that this should _not_ be confused with _exceptions_. For more info on x86 exceptions, see
 /// https://wiki.osdev.org/Exceptions
-fn pic_irq(irq: usize, _: &mut ExceptionStackFrame) {
+fn pic_irq(irq: usize, _: &mut InterruptStackFrame) {
     // execute handler
     match irq {
         // PIT interrupts
@@ -136,71 +136,71 @@ fn pic_irq(irq: usize, _: &mut ExceptionStackFrame) {
 // hard work for them.
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "x86-interrupt" fn irq_0(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_0(esf: &mut InterruptStackFrame) {
     pic_irq(0, esf);
 }
 
-extern "x86-interrupt" fn irq_1(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_1(esf: &mut InterruptStackFrame) {
     pic_irq(1, esf);
 }
 
-extern "x86-interrupt" fn irq_2(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_2(esf: &mut InterruptStackFrame) {
     pic_irq(2, esf);
 }
 
-extern "x86-interrupt" fn irq_3(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_3(esf: &mut InterruptStackFrame) {
     pic_irq(3, esf);
 }
 
-extern "x86-interrupt" fn irq_4(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_4(esf: &mut InterruptStackFrame) {
     pic_irq(4, esf);
 }
 
-extern "x86-interrupt" fn irq_5(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_5(esf: &mut InterruptStackFrame) {
     pic_irq(5, esf);
 }
 
-extern "x86-interrupt" fn irq_6(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_6(esf: &mut InterruptStackFrame) {
     pic_irq(6, esf);
 }
 
-extern "x86-interrupt" fn irq_7(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_7(esf: &mut InterruptStackFrame) {
     pic_irq(7, esf);
 }
 
-extern "x86-interrupt" fn irq_8(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_8(esf: &mut InterruptStackFrame) {
     pic_irq(8, esf);
 }
 
-extern "x86-interrupt" fn irq_9(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_9(esf: &mut InterruptStackFrame) {
     pic_irq(9, esf);
 }
 
-extern "x86-interrupt" fn irq_a(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_a(esf: &mut InterruptStackFrame) {
     pic_irq(0xa, esf);
 }
 
-extern "x86-interrupt" fn irq_b(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_b(esf: &mut InterruptStackFrame) {
     pic_irq(0xb, esf);
 }
 
-extern "x86-interrupt" fn irq_c(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_c(esf: &mut InterruptStackFrame) {
     pic_irq(0xc, esf);
 }
 
-extern "x86-interrupt" fn irq_d(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_d(esf: &mut InterruptStackFrame) {
     pic_irq(0xd, esf);
 }
 
-extern "x86-interrupt" fn irq_e(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_e(esf: &mut InterruptStackFrame) {
     pic_irq(0xe, esf);
 }
 
-extern "x86-interrupt" fn irq_f(esf: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn irq_f(esf: &mut InterruptStackFrame) {
     pic_irq(0xf, esf);
 }
 
 /// Handle a breakpoint exception
-extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame) {
     panic!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
