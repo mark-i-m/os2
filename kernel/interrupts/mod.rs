@@ -34,9 +34,18 @@ pub fn init() {
     unsafe {
         tss64 = TaskStateSegment::new();
         tss64.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = {
-            let stack = box [0u8; IST_FRAME_SIZE];
+            // We create a struct to force the alignment to 16.
+            #[repr(align(16))]
+            struct Stack {
+                _data: [u8; IST_FRAME_SIZE],
+            }
+
+            let stack = box Stack {
+                _data: [0; IST_FRAME_SIZE],
+            };
             let stack_start = VirtAddr::from_ptr(&stack);
             let stack_end = stack_start + IST_FRAME_SIZE;
+            printk!("double fault stack @ {:?}, {:?}\n", stack_start, stack_end);
             stack_end
         };
 
@@ -69,9 +78,9 @@ pub fn init() {
 extern "x86-interrupt" fn handle_gpf(esf: &mut InterruptStackFrame, error: u64) {
     panic!(
         "General Protection Fault
-            error: {:x}\n
-            CS:RIP: {:x}:{:x}\n
-            flags: {:b}",
+            error: {:#x}
+            CS:RIP: {:#x}:{:#x}
+            flags: {:#b}",
         error,
         esf.code_segment,
         esf.instruction_pointer.as_u64(),
@@ -80,6 +89,15 @@ extern "x86-interrupt" fn handle_gpf(esf: &mut InterruptStackFrame, error: u64) 
 }
 
 /// Handle a double fault
-extern "x86-interrupt" fn handle_double_fault(esf: &mut InterruptStackFrame, _error: u64) {
-    panic!("Double Fault\n{:#?}", esf);
+extern "x86-interrupt" fn handle_double_fault(esf: &mut InterruptStackFrame, error: u64) {
+    panic!(
+        "Double Fault
+            error: {:#x}
+            CS:RIP: {:#x}:{:#x}
+            flags: {:#b}",
+        error,
+        esf.code_segment,
+        esf.instruction_pointer.as_u64(),
+        esf.cpu_flags
+    );
 }

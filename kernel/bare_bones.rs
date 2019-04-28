@@ -34,7 +34,6 @@ fn rust_begin_panic(pi: &PanicInfo) -> ! {
 
     printk!("\n===========================\n");
 
-    #[allow(clippy::empty_loop)]
     loop {
         hlt(); // Don't just spin... wait a bit
     }

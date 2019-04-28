@@ -171,7 +171,7 @@ loop:
     .align 4096 // page aligned
     .global kernelStackTop
 kernelStackTop:
-    .skip 4096  // buffer page
+    .skip 4096  // guard page
 	.skip 9182  // the actual stack
 kernelStack:
 	.word 0

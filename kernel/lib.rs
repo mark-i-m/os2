@@ -111,11 +111,9 @@ pub fn kernel_main() -> ! {
     // We can turn on interrupts now.
     x86_64::instructions::interrupts::enable();
 
-    // TODO: remove
-    fn overflow() {
-        overflow();
+    unsafe {
+        *(0x0 as *mut u8) = 0;
     }
-    overflow();
 
     // Start the first task
     process::start();

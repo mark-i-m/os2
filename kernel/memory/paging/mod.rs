@@ -47,6 +47,10 @@ static VIRT_MEM_ALLOC: Mutex<Option<BuddyAllocator<usize>>> = Mutex::new(None);
 extern "C" {
     /// The root PML4 for the system.
     static mut page_map_l4: PageTable;
+
+    /// The address of the initial kernel stack. We want to unmap the end of the stack to protect
+    /// against overflows that would overwrite important things like the IDT.
+    static mut kernelStackTop: usize;
 }
 
 /// The page tables for the system. The page tables are recursive in the 511-th entry.
@@ -187,13 +191,16 @@ pub fn init() {
             .unwrap();
     }
 
-    // Update the PT with the new mappings for the first 2MiB.
+    // Update the PT with the new mappings for the first 2MiB except for the stack guard page.
     let page_table = new_pt_page.start_address().as_mut_ptr() as *mut PageTable;
     unsafe {
         (*page_table).zero();
 
         for i in 0u16..=(u9::MAX.into()) {
-            if i == 0 || u64::from(i) * (1 << 12) == KERNEL_HEAP_GUARD {
+            if i == 0
+                || u64::from(i) * (1 << 12) == KERNEL_HEAP_GUARD
+                || u64::from(i) * (1 << 12) == (&kernelStackTop as *const usize as u64)
+            {
                 continue;
             }
 
@@ -217,6 +224,9 @@ pub fn init() {
     }
 
     tlb::flush(VirtAddr::zero());
+    unsafe {
+        tlb::flush(VirtAddr::from_ptr(&kernelStackTop as *const usize));
+    }
 
     // Unmap the new PT from where we were updating it.
     PAGE_TABLES
