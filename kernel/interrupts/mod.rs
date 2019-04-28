@@ -61,13 +61,14 @@ pub fn init() {
     // Initialize the Programmable Interrupt Controler
     pic::init();
 
-    // Add a handler for GPF and double fault
+    // Add a few exception handlers.
     unsafe {
         idt64
             .double_fault
             .set_handler_fn(handle_double_fault)
             .set_stack_index(DOUBLE_FAULT_IST_INDEX);
         idt64.general_protection_fault.set_handler_fn(handle_gpf);
+        crate::memory::init_pf_handler();
     }
 
     // Initialize the Programmable Interrupt Timer

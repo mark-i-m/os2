@@ -111,10 +111,6 @@ pub fn kernel_main() -> ! {
     // We can turn on interrupts now.
     x86_64::instructions::interrupts::enable();
 
-    unsafe {
-        *(0x0 as *mut u8) = 0;
-    }
-
     // Start the first task
     process::start();
 
