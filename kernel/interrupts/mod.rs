@@ -1,9 +1,12 @@
 //! This module contains everything needed for interrupts
 
-use x86_64::structures::{
-    gdt::GlobalDescriptorTable,
-    idt::{InterruptDescriptorTable, InterruptStackFrame},
-    tss::TaskStateSegment,
+use x86_64::{
+    structures::{
+        gdt::{Descriptor, GlobalDescriptorTable},
+        idt::{InterruptDescriptorTable, InterruptStackFrame},
+        tss::TaskStateSegment,
+    },
+    VirtAddr,
 };
 
 pub use self::pit::HZ as PIT_HZ;
@@ -15,12 +18,34 @@ mod pit;
 #[allow(improper_ctypes)]
 extern "C" {
     pub static mut idt64: InterruptDescriptorTable;
-    pub static mut gdb64: GlobalDescriptorTable;
+    pub static mut gdt64: GlobalDescriptorTable;
     pub static mut tss64: TaskStateSegment;
 }
 
+/// The index in the TSS of the first Interrupt stack frame.
+const DOUBLE_FAULT_IST_INDEX: u16 = 0;
+
+const IST_FRAME_SIZE: usize = 4096;
+
 /// Initialize interrupts (and exceptions).
 pub fn init() {
+    // Initialize the TSS, update the GDT and IDT
+    unsafe {
+        tss64 = TaskStateSegment::new();
+        tss64.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = {
+            let stack = box [0u8; IST_FRAME_SIZE];
+            let stack_start = VirtAddr::from_ptr(&stack);
+            let stack_end = stack_start + IST_FRAME_SIZE;
+            stack_end
+        };
+
+        gdt64 = GlobalDescriptorTable::new();
+        gdt64.add_entry(Descriptor::kernel_code_segment());
+        gdt64.add_entry(Descriptor::tss_segment(&tss64));
+
+        gdt64.load();
+    }
+
     // Initialize the Programmable Interrupt Controler
     pic::init();
 

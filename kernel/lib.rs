@@ -63,16 +63,6 @@ pub fn kernel_main() -> ! {
     // Let everyone know we are here
     printk!("\nYo Yo Yo! Made it to `kernel_main`! Hooray!\n");
 
-    // Set up TSS
-    printk!("TSS");
-    //interrupts::tss_init(); // TODO
-    printk!(" ✔\n");
-
-    // Set up interrupt/exception handling
-    printk!("Interrupts...\n\t");
-    interrupts::init();
-    printk!("Interrupts ✔\n");
-
     // Initialize memory
     // make the kernel heap 1MiB - 4KiB starting at 1MiB + 4KiB. This extra page will be unmapped
     // later to protect against heap overflows (unlikely as that is)...
@@ -83,6 +73,11 @@ pub fn kernel_main() -> ! {
         /* size */ KERNEL_HEAP_SIZE,
     );
     printk!("Memory ✔\n");
+
+    // Set up interrupt/exception handling
+    printk!("Interrupts...\n\t");
+    interrupts::init();
+    printk!("Interrupts ✔\n");
 
     // I/O
     printk!("I/O ...\n\t");
