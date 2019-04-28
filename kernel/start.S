@@ -151,20 +151,28 @@ tss64:
 kStart64:
 
 	// set segment to null
-	mov $0, %eax
-	mov %eax, %ss
-	mov %eax, %ds
-	mov %eax, %es
-	mov %eax, %fs
-	mov %eax, %gs
+	mov $0, %rax
+	mov %rax, %ss
+	mov %rax, %ds
+	mov %rax, %es
+	mov %rax, %fs
+	mov %rax, %gs
 
-	mov $kernelStack,%esp
+	mov $kernelStack,%rsp
 	call kernel_main
 loop:
 	jmp loop
 
-    .align 8
-	.skip 9182
+/* This is the kernel stack (8KB) that we initially run on. To protect against
+ * buffer overflows, we unmap a buffer page at the top of the stack as soon as
+ * memory management is setup.
+ */
+
+    .align 4096 // page aligned
+    .global kernelStackTop
+kernelStackTop:
+    .skip 4096  // buffer page
+	.skip 9182  // the actual stack
 kernelStack:
 	.word 0
 

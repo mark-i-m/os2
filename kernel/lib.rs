@@ -115,7 +115,7 @@ pub fn kernel_main() -> ! {
     fn overflow() {
         overflow();
     }
-    //overflow();
+    overflow();
 
     // Start the first task
     process::start();
