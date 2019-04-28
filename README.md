@@ -22,9 +22,6 @@ including dependencies). Not bad!
 
 # TODO/WIP
 
-- Something about iterators is causing a double fault... `see
-  memory/paging/mod.rs:266`. Try removing that loop. Everything works fine.
-
 - Userspace
 
 - Kernel reserves a large amount of virtual address space for its own use.
