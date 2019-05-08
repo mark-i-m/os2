@@ -2,6 +2,8 @@
 
 pub mod sched;
 
+mod user;
+
 use continuation::Continuation;
 
 /// Initialize the process/scheduling subsystem with the initial continuation.
