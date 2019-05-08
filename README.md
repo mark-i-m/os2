@@ -40,7 +40,7 @@ including dependencies). Not bad!
 - rust, nightly
 
   ```txt
-  rustc 1.35.0-nightly (e4c66afba 2019-04-13)
+  rustc 1.36.0-nightly (cfdc84a00 2019-05-07)
   ```
 
 - `cargo xbuild` via `cargo install cargo-xbuild`
