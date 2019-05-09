@@ -21,3 +21,4 @@ smallheap = { git = "https://github.com/mark-i-m/smallheap", features = ["no_std
 buddy = { git = "https://github.com/mark-i-m/buddy" }
 x86_64 = "0.5.2"
 os_bootinfo = "0.2.1"
+rand = { version = "0.6", default-features = false, features = ["alloc"] }

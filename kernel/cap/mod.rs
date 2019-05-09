@@ -36,6 +36,8 @@ use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 
 use core::marker::PhantomData;
 
+use rand::{Rng, SeedableRng};
+
 use spin::Mutex;
 
 /// A registry of cabilities.
@@ -75,6 +77,34 @@ pub struct ResourceHandle<R: Enable + 'static> {
     /// Conceptually, the resource handle owns a reference to the resource.
     _resource: PhantomData<&'static R>,
 }
+
+pub fn register<R: Enable + 'static>(cap: R) -> ResourceHandle<R> {
+    let mut locked = CAPABILITY_REGISTRY.lock();
+
+    // Generate a new random key. We are generating 128-bit random value, so the odds of a
+    // collision by chance or by malicious users are extremely low.
+    //
+    // NOTE: I am not actually using a random sequence because I am seeding the RNG.
+    let mut rand = rand::rngs::StdRng::from_seed([0; 32]).gen();
+
+    while locked.as_mut().unwrap().contains_key(&rand) {
+        // extremely unlikely...
+        rand = rand;
+    }
+
+    locked.as_mut().unwrap().insert(rand, Box::new(cap));
+
+    ResourceHandle {
+        key: rand,
+        _resource: PhantomData,
+    }
+
+    // unlock
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Implementations of different capabilities.
+////////////////////////////////////////////////////////////////////////////////
 
 /// Capability on a memory region.
 pub struct VirtualMemoryRegion {

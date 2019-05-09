@@ -15,6 +15,7 @@
 extern crate alloc;
 extern crate buddy;
 extern crate os_bootinfo;
+extern crate rand;
 extern crate rlibc;
 extern crate smallheap;
 extern crate spin;

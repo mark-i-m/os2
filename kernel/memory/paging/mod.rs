@@ -33,6 +33,8 @@ use {KERNEL_HEAP_GUARD, KERNEL_HEAP_SIZE, KERNEL_HEAP_START};
 
 use self::e820::E820Info;
 
+use crate::cap::{ResourceHandle, VirtualMemoryRegion};
+
 /// The kernel's physical frame allocator. It returns frame numbers, not physical addresses.
 static PHYS_MEM_ALLOC: Mutex<Option<phys::BuddyAllocator>> = Mutex::new(None);
 
@@ -77,6 +79,7 @@ const VIRT_ADDR_AVAILABLE: &[(usize, usize)] = &[
     //(!((1 << (ADDRESS_SPACE_WIDTH - 1)) - 1), core::usize::MAX),
 ];
 
+/// Physical memory allocator.
 mod phys {
     use x86_64::{
         structures::paging::{FrameAllocator, PageSize, PhysFrame, Size4KiB},
@@ -303,6 +306,28 @@ pub fn init() {
     }
 
     printk!("\tvirtual address allocator inited\n");
+}
+
+/// Allocate a region of virtual memory (but not backed by physical memory). Specifically, allocate
+/// the given number of pages. These allocations are basically parmanent.
+///
+/// No page table mappings are created. It is the user's responsibility to make sure the memory is
+/// mapped before it is used.
+///
+/// Return a capability for the allocated region.
+///
+/// # Panics
+///
+/// If we exhaust the virtual address space.
+pub fn valloc(npages: usize) -> ResourceHandle<VirtualMemoryRegion> {
+    let mem = VIRT_MEM_ALLOC
+        .lock()
+        .as_mut()
+        .unwrap()
+        .alloc(npages)
+        .expect("Out of virtual memory.");
+
+    unsafe { crate::cap::register(VirtualMemoryRegion::new(mem, npages)) }
 }
 
 /// Handle a page fault
