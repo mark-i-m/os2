@@ -80,12 +80,12 @@ pub fn kernel_main() -> ! {
     printk!("Interrupts ✔\n");
 
     // I/O
-    printk!("I/O ...\n\t");
+    printk!("I/O ...\n");
     io::init();
     printk!("I/O ✔\n");
 
     // Capabilities
-    printk!("Capabilities ...\n\t");
+    printk!("Capabilities ...\n");
     cap::init();
     printk!("Capabilities ✔\n");
 
