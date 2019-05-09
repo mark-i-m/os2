@@ -84,6 +84,11 @@ pub fn kernel_main() -> ! {
     io::init();
     printk!("I/O ✔\n");
 
+    // Capabilities
+    printk!("Capabilities ...\n\t");
+    cap::init();
+    printk!("Capabilities ✔\n");
+
     // Create the init task
     printk!("Taskes");
     process::init(Continuation::new(|_| {
