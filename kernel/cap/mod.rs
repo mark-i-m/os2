@@ -140,6 +140,7 @@ pub struct CapabilityGroup {
 
 impl CapabilityGroup {
     pub fn new(caps: Vec<Box<dyn Enable>>) -> Self {
+        // TODO: make sure there are no groups within...
         CapabilityGroup { caps }
     }
 }
