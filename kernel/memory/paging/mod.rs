@@ -21,8 +21,8 @@ use x86_64::{
     structures::{
         idt::{InterruptStackFrame, PageFaultErrorCode},
         paging::{
-            FrameAllocator, Mapper, Page, PageSize, PageTable, PageTableFlags, PhysFrame,
-            RecursivePageTable, Size4KiB,
+            Mapper, Page, PageSize, PageTable, PageTableFlags, PhysFrame, RecursivePageTable,
+            Size4KiB,
         },
     },
     ux::u9,
@@ -34,15 +34,11 @@ use {KERNEL_HEAP_GUARD, KERNEL_HEAP_SIZE, KERNEL_HEAP_START};
 use self::e820::E820Info;
 
 /// The kernel's physical frame allocator. It returns frame numbers, not physical addresses.
-static PHYS_MEM_ALLOC: Mutex<Option<BuddyAllocator<usize>>> = Mutex::new(None);
+static PHYS_MEM_ALLOC: Mutex<Option<phys::BuddyAllocator>> = Mutex::new(None);
 
 /// The kernel's virtual memory allocator. It returns page numbers, not virtual addresses. This
 /// allocator assigns parts of the 48-bit single address space when asked.
 static VIRT_MEM_ALLOC: Mutex<Option<BuddyAllocator<usize>>> = Mutex::new(None);
-
-// TODO: use a Btreemap to store the assigned address ranges (like vm_area_structs). Probably kinda
-// boring to implement compaction like Linux does with vm_area_structs, so let's just be
-// inefficient...
 
 extern "C" {
     /// The root PML4 for the system.
@@ -81,15 +77,39 @@ const VIRT_ADDR_AVAILABLE: &[(usize, usize)] = &[
     //(!((1 << (ADDRESS_SPACE_WIDTH - 1)) - 1), core::usize::MAX),
 ];
 
-// TODO: clean this up. Eventually, we will want this wrapper to be the only thing exposed for page
-// frame allocation.
-struct PhysBuddyAllocator<'a>(&'a mut BuddyAllocator<usize>);
+mod phys {
+    use x86_64::{
+        structures::paging::{FrameAllocator, PageSize, PhysFrame, Size4KiB},
+        PhysAddr,
+    };
 
-impl<'a> FrameAllocator<Size4KiB> for PhysBuddyAllocator<'a> {
-    fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
-        self.0.alloc(1).map(|f| {
-            PhysFrame::from_start_address(PhysAddr::new(f as u64 * Size4KiB::SIZE)).unwrap()
-        })
+    /// A thin wrapper around `BuddyAllocator` that just implements `FrameAllocator`.
+    pub struct BuddyAllocator(buddy::BuddyAllocator<usize>);
+
+    impl BuddyAllocator {
+        pub fn new(nbins: u8) -> Self {
+            BuddyAllocator(buddy::BuddyAllocator::new(nbins))
+        }
+
+        pub fn extend(&mut self, start: usize, end: usize) {
+            self.0.extend(start, end);
+        }
+
+        pub fn alloc(&mut self, n: usize) -> Option<usize> {
+            self.0.alloc(n)
+        }
+
+        pub fn free(&mut self, val: usize, n: usize) {
+            self.0.free(val, n)
+        }
+    }
+
+    impl FrameAllocator<Size4KiB> for BuddyAllocator {
+        fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
+            self.0.alloc(1).map(|f| {
+                PhysFrame::from_start_address(PhysAddr::new(f as u64 * Size4KiB::SIZE)).unwrap()
+            })
+        }
     }
 }
 
@@ -116,7 +136,7 @@ pub fn init() {
     // It's ok for us to just hold this lock because we don't expect to have any page faults during
     // this function's execution.
     let mut pmem_alloc = PHYS_MEM_ALLOC.lock();
-    *pmem_alloc = Some(BuddyAllocator::new(nbins));
+    *pmem_alloc = Some(phys::BuddyAllocator::new(nbins));
 
     // Add all available physical memory to the allocator based on info from the E820 BIOS call.
     // Don't add the first 2MiB since they are already in use.
@@ -186,7 +206,7 @@ pub fn init() {
                 new_pt_page,
                 PhysFrame::from_start_address(PhysAddr::new(new_pt)).unwrap(),
                 PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE,
-                &mut PhysBuddyAllocator(pmem_alloc.as_mut().unwrap()),
+                pmem_alloc.as_mut().unwrap(),
             )
             .unwrap();
     }
@@ -254,7 +274,7 @@ pub fn init() {
                     PhysFrame::from_start_address(PhysAddr::new(current_heap_end + (i << 12)))
                         .unwrap(),
                     PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::GLOBAL,
-                    &mut PhysBuddyAllocator(pmem_alloc.as_mut().unwrap()),
+                    pmem_alloc.as_mut().unwrap(),
                 )
                 .unwrap()
                 .flush();
