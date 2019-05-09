@@ -23,6 +23,7 @@ extern crate x86_64;
 #[macro_use]
 mod debug;
 mod bare_bones;
+mod cap;
 mod continuation;
 mod interrupts;
 mod io;
