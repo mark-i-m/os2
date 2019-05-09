@@ -1,8 +1,7 @@
 //! Module for all things processes
 
 pub mod sched;
-
-mod user;
+pub mod user;
 
 use continuation::Continuation;
 

@@ -53,6 +53,8 @@ const KERNEL_HEAP_SIZE: usize = (1 << 20) - (1 << 12);
 /// This is the entry point to the kernel. It is the first rust code that runs.
 #[no_mangle]
 pub fn kernel_main() -> ! {
+    use crate::process::user;
+
     // At this point we are still in the provisional environment with
     // - the temporary page tables (first 2MiB of memory direct mapped)
     // - no IDT
@@ -106,7 +108,17 @@ pub fn kernel_main() -> ! {
                         } else {
                             unreachable!();
                         }
-                        ContResult::Done
+
+                        ContResult::Success(vec![(
+                            EventKind::Now,
+                            Continuation::new(|_| {
+                                printk!("Attempting to switch to user!");
+
+                                let code = user::load_user_code_section();
+                                let stack = user::allocate_user_stack();
+                                user::switch_to_user(code, stack);
+                            }),
+                        )])
                     }),
                 )])
             }),

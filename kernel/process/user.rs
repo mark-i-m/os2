@@ -32,7 +32,7 @@ pub fn allocate_user_stack() -> ResourceHandle<VirtualMemoryRegion> {
 
 /// Switch to user mode, executing the given code with the given address.
 pub fn switch_to_user(
-    code: ResourceHandle<VirtualMemoryRegion>,
+    code: (ResourceHandle<VirtualMemoryRegion>, usize),
     stack: ResourceHandle<VirtualMemoryRegion>,
 ) -> ! {
     // TODO
