@@ -1,35 +1,49 @@
 # OS2 [VERY WIP]
 
 This is a small hobby OS to play around with stuff I have never done before...
+it's not intended to be functional, useful, secure, or reliable. It is meant to
+be approximately fun to implement.
 
-Currently its a little over 1000 LOC (including comments + whitespace, not
-including dependencies). Not bad!
+# WIP
+
+- Userspace
+    - Currently, the kernel is crash-looping on boot. I suspect that adding in
+      rand made it too big, and something is overflowing into a memory region
+      it isn't allowed to overflow into...
+
+# Already implemented
+
+Currently its a little over 1000 LOC (not including comments + whitespace +
+dependencies). Not bad!
 
 - The kernel itself is continuation-based, rather than using something like
-  kthreads. (In the first pass, I am just making things work. Later, I might
-  go back and make it efficient).
+  kthreads. In the first pass, I am just making things work. Later, I might
+  go back and make it efficient.
 
 - No timer-based preemption in kernelspace or userspace (though timer
-  interrupts do occur so that timers can work), no locks, no multi-threading in
+  interrupts do occur so that timers can work). No locks, no multi-threading in
   userspace. Every process is single-threaded and continuation-based. Each
   `Continuation` can return a set of additional continuations to be run in any
   order, an error, or nothing. Continuations can also wait for events, such as
   I/O or another process's termination.
 
+- Single address space. Everything lives in the same address space. Page table
+  entry bits are used to disable certain portions of the address space for some
+  continuations.
+
 - Small kernel heap for dynamic memory allocation.
 
 - Buddy allocator for physical frame allocation.
 
+- Buddy allocator for virtual address space regions.
+
 - Simple capability system for managing access to resources in the system, such
   as memory regions.
 
-# TODO/WIP
+# TODO
 
-- Userspace
-
-- Kernel reserves a large amount of virtual address space for its own use.
-
-- Single address space. All executables need to be position-independent. (TODO)
+- Execute position-indep binaries in usermode. All executables need to be
+  position-independent.
 
 - Zero-copy message passing for IPC. To send a message,
     - Remove from sender page tables
@@ -37,6 +51,9 @@ including dependencies). Not bad!
     - Insert page into receiver page tables
     - Allow the receiver to fault to map the page. Process receives message via
       the normal future polling.
+
+- I am toying with the idea of not having processes at all, just DAGs of
+  continuations which may or may not choose to pass on their capabilities.
 
 # Building
 
@@ -48,11 +65,12 @@ including dependencies). Not bad!
 
 - `cargo xbuild` via `cargo install cargo-xbuild`
 
-- build-essentials: gcc, make
+- `build-essentials` and standard utils: `gcc`, `make`, `ld`, `objcopy`, `dd`
 
+- `qemu` to run
 
 To build and run
-``` console
+```console
 $ cd os2
 $ make runtext
 ```
