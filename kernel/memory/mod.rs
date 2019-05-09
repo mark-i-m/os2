@@ -1,6 +1,7 @@
 //! The memory management subsystem.
 
 pub use self::heap::KernelAllocator;
+pub use self::paging::valloc;
 
 mod heap;
 mod paging;
