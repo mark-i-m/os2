@@ -19,10 +19,22 @@
 //! handles. To mitigate this, handles can be grouped into a `ResourceGroup`, which is a capability
 //! that contains other capabilities and gives access to all of them. To keep things simple,
 //! capability groups may _not_ have other groups in them.
+//!
+//! # User space
+//!
+//! Capabilities _must never_ leave kernel mode because they are not fully thread-safe, and we
+//! cannot control what users do with them. Instead, we only ever return `ResourceHandle`s and
+//! resource metadata to user space.
+//!
+//! A `ResourceHandle` is guaranteed to be valid until it is destroy by the user.
+//!
+//! On the other hand, the metadata may become out of date with the actual kernel resource, so the
+//! user should be prepared that. Each resource may also make its own guarantees about its
+//! metadata, too, in addition to what is guaranteed for all resources.
 
-use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 
-use core::pin::Pin;
+use core::marker::PhantomData;
 
 use spin::Mutex;
 
@@ -33,58 +45,40 @@ static CAPABILITY_REGISTRY: Mutex<Option<BTreeMap<u128, Box<dyn Enable>>>> = Mut
 pub fn init() {
     *CAPABILITY_REGISTRY.lock() = Some(BTreeMap::new());
 
-    // TODO: type testing
-    CAPABILITY_REGISTRY
-        .lock()
-        .as_mut()
-        .unwrap()
-        .insert(0, Box::new(Capability::new(VirtualMemoryRegion::new(0, 0))));
-    CAPABILITY_REGISTRY
-        .lock()
-        .as_mut()
-        .unwrap()
-        .insert(0, Box::new(Capability::new(CapabilityGroup::new(0, 0))));
+    #[cfg(test)]
+    {
+        // Type testing: make sure that everything has the right trait bounds.
+        CAPABILITY_REGISTRY
+            .lock()
+            .as_mut()
+            .unwrap()
+            .insert(0, Box::new(unsafe { VirtualMemoryRegion::new(0, 0) }));
+        CAPABILITY_REGISTRY
+            .lock()
+            .as_mut()
+            .unwrap()
+            .insert(0, Box::new(CapabilityGroup::new()));
+    }
 }
 
 /// All capabilities implement this trait.
 ///
-/// A capability should be thread-safe so that it can sent across threads.
+/// It should be safe to send capabilities between (kernel) threads, even though in user mode,
+/// resource handles are used instead.
 pub trait Enable: Send {}
 
 /// A handle to a resource in the capability registry.
-pub struct ResourceHandle {
+pub struct ResourceHandle<R: Enable + 'static> {
     /// An index into the capability registry.
     key: u128,
-}
 
-/// A reference-counted, immutable, pinned capability around some resource.
-///
-/// This is a convenience for turning an arbitrary struct into a thread-safe immutable capability.
-/// If the capability needs to be mutable, then either you need to implement `Enable` for it
-/// manually by making it thread-safe, or keep the mutable part somewhere else.
-pub struct Capability<R> {
-    cap: Arc<Mutex<R>>,
-}
-
-impl<R> Enable for Capability<R> {}
-
-impl<R> Capability<R> {
-    /// construct a new capability
-    pub fn new(cap: R) -> Self {
-        Capability { cap: Arc::pin(cap) }
-    }
-
-    pub fn cap(&self) -> &R {
-        &self.cap
-    }
+    /// Conceptually, the resource handle owns a reference to the resource.
+    _resource: PhantomData<&'static R>,
 }
 
 /// Capability on a memory region.
 pub struct VirtualMemoryRegion {
-    /// The first linear address of the memory region.
-    ///
-    /// TODO: unsafe accessor: it is the user's job to make sure that the correct mappings exist
-    /// before accessing the address.
+    /// The first virtual address of the memory region.
     addr: usize,
 
     /// The length of the memory region.
@@ -92,20 +86,32 @@ pub struct VirtualMemoryRegion {
 }
 
 impl VirtualMemoryRegion {
-    pub fn new(addr: usize, len: usize) -> Self {
+    /// Create a capability for the given virtual address region. It is up to the caller to make
+    /// sure that region is valid before constructing the capability.
+    pub unsafe fn new(addr: usize, len: usize) -> Self {
         VirtualMemoryRegion { addr, len }
     }
+
+    /// The first virtual address of the memory region.
+    ///
+    /// It is the user's job to make sure that the correct mappings exist before accessing the
+    /// address.
+    pub unsafe fn start(&self) -> usize {
+        self.addr
+    }
 }
+
+impl Enable for VirtualMemoryRegion {}
 
 /// Capability on a group of capabilities.
 pub struct CapabilityGroup {
-    caps: Box<dyn Enable>,
+    caps: Vec<Box<dyn Enable>>,
 }
 
 impl CapabilityGroup {
-    pub fn new() -> Self {
-        CapabilityGroup {
-            caps: Box::new(Capability::new(VirtualMemoryRegion::new(0, 0))), // TODO
-        }
+    pub fn new(caps: Vec<Box<dyn Enable>>) -> Self {
+        CapabilityGroup { caps }
     }
 }
+
+impl Enable for CapabilityGroup {}

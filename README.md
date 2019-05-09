@@ -20,6 +20,9 @@ including dependencies). Not bad!
 
 - Buddy allocator for physical frame allocation.
 
+- Simple capability system for managing access to resources in the system, such
+  as memory regions.
+
 # TODO/WIP
 
 - Userspace
