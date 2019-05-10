@@ -145,8 +145,17 @@ pub fn init() {
     // Don't add the first 2MiB since they are already in use.
     let mut total_mem = 0; // (in pages)
     for &(start, end) in e820.iter() {
-        if end <= (KERNEL_HEAP_START + KERNEL_HEAP_SIZE) / (Size4KiB::SIZE as usize) {
+        let reserved = (KERNEL_HEAP_START + KERNEL_HEAP_SIZE + KERNEL_HEAP_EXTEND as usize)
+            / (Size4KiB::SIZE as usize);
+        if end <= reserved {
+            // inside kernel reserved region
+            continue;
+        } else if start > reserved {
+            // beyond reserved region
             pmem_alloc.as_mut().unwrap().extend(start, end);
+        } else if start <= reserved {
+            // chop off the reserved part
+            pmem_alloc.as_mut().unwrap().extend(reserved, end);
         }
         total_mem += end - start + 1;
     }
