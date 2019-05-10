@@ -153,9 +153,11 @@ pub fn init() {
         } else if start > reserved {
             // beyond reserved region
             pmem_alloc.as_mut().unwrap().extend(start, end);
+            printk!("\tadded frames {:#X} - {:#X}\n", start, end);
         } else if start <= reserved {
             // chop off the reserved part
             pmem_alloc.as_mut().unwrap().extend(reserved, end);
+            printk!("\tadded frames {:#X} - {:#X}\n", reserved, end);
         }
         total_mem += end - start + 1;
     }
