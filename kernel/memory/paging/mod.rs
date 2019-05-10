@@ -225,10 +225,6 @@ pub fn init() {
             .unwrap();
     }
 
-    // TODO: somewhere in here, we zeroing out pages we shouldn't be in the kernel text,
-    // specifically address 0x81894, which contains a jump table for a `match`, leading to a
-    // segfault. Perhaps the new page table needs to be mapped somewhere else?
-
     // Update the PT with the new mappings for the first 2MiB except for the stack guard page.
     let page_table = new_pt_page.start_address().as_mut_ptr() as *mut PageTable;
     unsafe {
