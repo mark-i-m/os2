@@ -29,11 +29,12 @@ use x86_64::{
     PhysAddr, VirtAddr,
 };
 
-use {KERNEL_HEAP_GUARD, KERNEL_HEAP_SIZE, KERNEL_HEAP_START};
-
 use self::e820::E820Info;
 
-use crate::cap::{ResourceHandle, VirtualMemoryRegion};
+use crate::{
+    cap::{ResourceHandle, VirtualMemoryRegion},
+    memory::{KERNEL_HEAP_GUARD, KERNEL_HEAP_SIZE, KERNEL_HEAP_START},
+};
 
 /// The kernel's physical frame allocator. It returns frame numbers, not physical addresses.
 static PHYS_MEM_ALLOC: Mutex<Option<phys::BuddyAllocator>> = Mutex::new(None);
