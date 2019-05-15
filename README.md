@@ -4,12 +4,24 @@ This is a small hobby OS to play around with stuff I have never done before...
 it's not intended to be functional, useful, secure, or reliable. It is meant to
 be approximately fun to implement.
 
+If you want to see the latest things I am up to, check out the `dev` branch on
+this repo. Generally, `master` should compile and run.
+
 # WIP
 
 - Userspace
-    - Currently, the kernel is crash-looping on boot. I suspect that adding in
-      rand made it too big, and something is overflowing into a memory region
-      it isn't allowed to overflow into...
+    - Need to load the user code into the new virtual memory region.
+        - Need some sort of ELF loader... `gz/rust-elfloader` looks promising.
+        - Will probably just hard-code binary into an array with initially... I
+          don't really want to implement a file system.
+    - Need to add code to actually switch to user mode
+    - Need to impl system calls (probably very minimal, but needed so that the
+      user program can at least exit).
+
+- Paging
+    - `memory::paging::map_region`
+    - Need some way of registering valid memory mappings.
+    - Page fault handler should check that register and allocate a new page if needed.
 
 # Already implemented
 
