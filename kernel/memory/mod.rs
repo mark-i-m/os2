@@ -1,7 +1,7 @@
 //! The memory management subsystem.
 
 pub use self::heap::KernelAllocator;
-pub use self::paging::{map_region, valloc};
+pub use self::paging::{map_region, VirtualMemoryRegion};
 
 mod heap;
 mod paging;

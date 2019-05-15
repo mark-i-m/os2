@@ -40,8 +40,6 @@ use rand::{Rng, SeedableRng};
 
 use spin::Mutex;
 
-use x86_64::structures::paging::{PageSize, Size4KiB};
-
 /// A registry of cabilities.
 static CAPABILITY_REGISTRY: Mutex<Option<BTreeMap<u128, Box<dyn Enable>>>> = Mutex::new(None);
 
@@ -148,51 +146,6 @@ impl<R: Enable + 'static> UnregisteredResourceHandle<R> {
 ////////////////////////////////////////////////////////////////////////////////
 // Implementations of different capabilities.
 ////////////////////////////////////////////////////////////////////////////////
-
-/// Capability on a memory region.
-#[derive(Debug)]
-pub struct VirtualMemoryRegion {
-    /// The first virtual address of the memory region (bytes).
-    addr: u64,
-
-    /// The length of the memory region (bytes).
-    len: u64,
-}
-
-impl VirtualMemoryRegion {
-    /// Create a capability for the given virtual address region. It is up to the caller to make
-    /// sure that region is valid before constructing the capability.
-    pub unsafe fn new(addr: u64, len: u64) -> Self {
-        // Sanity check
-        assert_eq!(addr % Size4KiB::SIZE, 0); // page-aligned
-        assert_eq!(len % Size4KiB::SIZE, 0); // multiple of page size
-        assert_ne!(addr, 0); // non-null
-        assert!(len > 0); // non-empty
-
-        VirtualMemoryRegion { addr, len }
-    }
-
-    /// The first virtual address of the memory region.
-    ///
-    /// It is the user's job to make sure that the correct mappings exist before accessing the
-    /// address.
-    pub fn start(&self) -> *mut u8 {
-        self.addr as *mut u8
-    }
-
-    /// The length of the region (in bytes).
-    pub fn len(&self) -> u64 {
-        self.len
-    }
-
-    /// Shrink the region by one page at the beginning and end to account for guard pages.
-    pub fn guard(&mut self) {
-        self.addr -= Size4KiB::SIZE;
-        self.len -= Size4KiB::SIZE;
-    }
-}
-
-impl Enable for VirtualMemoryRegion {}
 
 /// Capability on a group of capabilities.
 #[derive(Debug)]

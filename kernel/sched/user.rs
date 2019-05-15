@@ -3,8 +3,8 @@
 use x86_64::structures::paging::PageTableFlags;
 
 use crate::{
-    cap::{ResourceHandle, VirtualMemoryRegion},
-    memory::{map_region, valloc},
+    cap::ResourceHandle,
+    memory::{map_region, VirtualMemoryRegion},
 };
 
 const USER_STACK_SIZE: usize = 1; // pages
@@ -15,7 +15,7 @@ const USER_STACK_SIZE: usize = 1; // pages
 /// Returns the virtual address region where the code has been loaded and the first RIP to start
 /// executing.
 pub fn load_user_code_section() -> (ResourceHandle<VirtualMemoryRegion>, usize) {
-    let mut user_code_section = valloc(3); // TODO: guard pages + size of text
+    let mut user_code_section = VirtualMemoryRegion::alloc_with_guard(1); // TODO
     user_code_section.as_mut_ref().guard();
 
     let user_code_section = user_code_section.register();
@@ -32,7 +32,6 @@ pub fn load_user_code_section() -> (ResourceHandle<VirtualMemoryRegion>, usize) 
     // TODO: load the code
 
     unimplemented!();
-    // TODO
 }
 
 /// Allocates virtual address space for the user stack (fixed size). Adds appropriate page table
@@ -43,7 +42,7 @@ pub fn load_user_code_section() -> (ResourceHandle<VirtualMemoryRegion>, usize) 
 /// stack), since it grows downward.
 pub fn allocate_user_stack() -> ResourceHandle<VirtualMemoryRegion> {
     // Allocate the stack the user will run on.
-    let mut user_stack = valloc(2 + USER_STACK_SIZE); // guard pages + stack size
+    let mut user_stack = VirtualMemoryRegion::alloc_with_guard(USER_STACK_SIZE);
     user_stack.as_mut_ref().guard();
 
     let user_stack = user_stack.register();
@@ -65,6 +64,9 @@ pub fn switch_to_user(
     code: (ResourceHandle<VirtualMemoryRegion>, usize),
     stack: ResourceHandle<VirtualMemoryRegion>,
 ) -> ! {
-    // TODO
+    // TODO: setup the stack to do iret
+
+    // TODO: smash the stack
+
     unimplemented!();
 }

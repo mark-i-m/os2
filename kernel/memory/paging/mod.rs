@@ -32,7 +32,7 @@ use x86_64::{
 use self::e820::E820Info;
 
 use crate::{
-    cap::{ResourceHandle, UnregisteredResourceHandle, VirtualMemoryRegion},
+    cap::{Enable, ResourceHandle, UnregisteredResourceHandle},
     memory::{KERNEL_HEAP_GUARD, KERNEL_HEAP_SIZE, KERNEL_HEAP_START},
 };
 
@@ -320,33 +320,73 @@ pub fn init() {
     printk!("\tvirtual address allocator inited\n");
 }
 
-/// Allocate a region of virtual memory (but not backed by physical memory). Specifically, allocate
-/// the given number of pages. These allocations are basically parmanent.
-///
-/// No page table mappings are created. It is the user's responsibility to make sure the memory is
-/// mapped before it is used.
-///
-/// Return a capability for the allocated region.
-///
-/// # Panics
-///
-/// If we exhaust the virtual address space.
-pub fn valloc(npages: usize) -> UnregisteredResourceHandle<VirtualMemoryRegion> {
-    let mem = VIRT_MEM_ALLOC
-        .lock()
-        .as_mut()
-        .unwrap()
-        .alloc(npages)
-        .expect("Out of virtual memory.");
+/// Capability on a memory region.
+#[derive(Debug)]
+pub struct VirtualMemoryRegion {
+    /// The first virtual address of the memory region (bytes).
+    addr: u64,
 
-    unsafe {
-        UnregisteredResourceHandle::new(VirtualMemoryRegion::new(
-            mem as u64 * Size4KiB::SIZE,
-            npages as u64 * Size4KiB::SIZE,
-        ))
+    /// The length of the memory region (bytes).
+    len: u64,
+}
+
+impl VirtualMemoryRegion {
+    /// Allocate a region of virtual memory (but not backed by physical memory). Specifically, allocate
+    /// the given number of pages. These allocations are basically parmanent.
+    ///
+    /// No page table mappings are created. It is the user's responsibility to make sure the memory is
+    /// mapped before it is used.
+    ///
+    /// Return a capability for the allocated region.
+    ///
+    /// # Panics
+    ///
+    /// If we exhaust the virtual address space.
+    pub fn alloc(npages: usize) -> UnregisteredResourceHandle<Self> {
+        let mem = VIRT_MEM_ALLOC
+            .lock()
+            .as_mut()
+            .unwrap()
+            .alloc(npages)
+            .expect("Out of virtual memory.");
+
+        UnregisteredResourceHandle::new(VirtualMemoryRegion {
+            addr: mem as u64 * Size4KiB::SIZE,
+            len: npages as u64 * Size4KiB::SIZE,
+        })
+    }
+
+    /// Like `alloc`, but adds 2 to npages and calls `guard`.
+    pub fn alloc_with_guard(npages: usize) -> UnregisteredResourceHandle<Self> {
+        let mut mem = Self::alloc(npages + 2);
+        mem.as_mut_ref().guard();
+        mem
+    }
+
+    /// The first virtual address of the memory region.
+    ///
+    /// It is the user's job to make sure that the correct mappings exist before accessing the
+    /// address.
+    pub fn start(&self) -> *mut u8 {
+        self.addr as *mut u8
+    }
+
+    /// The length of the region (in bytes).
+    pub fn len(&self) -> u64 {
+        self.len
+    }
+
+    /// Shrink the region by one page at the beginning and end to account for guard pages.
+    pub fn guard(&mut self) {
+        self.addr -= Size4KiB::SIZE;
+        self.len -= Size4KiB::SIZE;
     }
 }
 
+impl Enable for VirtualMemoryRegion {}
+
+/// Add page table entries for the given virtual memory region, but don't mark them present or
+/// allocate pages. Demand paging will populate them as needed.
 pub fn map_region(region: ResourceHandle<VirtualMemoryRegion>, flags: PageTableFlags) {
     // TODO
     unimplemented!();
