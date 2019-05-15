@@ -32,7 +32,7 @@ use x86_64::{
 use self::e820::E820Info;
 
 use crate::{
-    cap::{ResourceHandle, VirtualMemoryRegion},
+    cap::{ResourceHandle, UnregisteredResourceHandle, VirtualMemoryRegion},
     memory::{KERNEL_HEAP_GUARD, KERNEL_HEAP_SIZE, KERNEL_HEAP_START},
 };
 
@@ -331,7 +331,7 @@ pub fn init() {
 /// # Panics
 ///
 /// If we exhaust the virtual address space.
-pub fn valloc(npages: usize) -> ResourceHandle<VirtualMemoryRegion> {
+pub fn valloc(npages: usize) -> UnregisteredResourceHandle<VirtualMemoryRegion> {
     let mem = VIRT_MEM_ALLOC
         .lock()
         .as_mut()
@@ -339,7 +339,17 @@ pub fn valloc(npages: usize) -> ResourceHandle<VirtualMemoryRegion> {
         .alloc(npages)
         .expect("Out of virtual memory.");
 
-    unsafe { crate::cap::register(VirtualMemoryRegion::new(mem, npages)) }
+    unsafe {
+        UnregisteredResourceHandle::new(VirtualMemoryRegion::new(
+            mem as u64 * Size4KiB::SIZE,
+            npages as u64 * Size4KiB::SIZE,
+        ))
+    }
+}
+
+pub fn map_region(region: ResourceHandle<VirtualMemoryRegion>, flags: PageTableFlags) {
+    // TODO
+    unimplemented!();
 }
 
 /// Handle a page fault

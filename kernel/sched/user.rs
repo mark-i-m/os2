@@ -1,9 +1,13 @@
 //! Switch to usermode
 
+use x86_64::structures::paging::PageTableFlags;
+
 use crate::{
     cap::{ResourceHandle, VirtualMemoryRegion},
-    memory::valloc,
+    memory::{map_region, valloc},
 };
+
+const USER_STACK_SIZE: usize = 1; // pages
 
 /// Allocates virtual address space, adds appropriate page table mappings, loads the specified code
 /// section into the allocated memory.
@@ -11,7 +15,21 @@ use crate::{
 /// Returns the virtual address region where the code has been loaded and the first RIP to start
 /// executing.
 pub fn load_user_code_section() -> (ResourceHandle<VirtualMemoryRegion>, usize) {
-    let user_code_section = valloc(3); // TODO: guard pages + size of text
+    let mut user_code_section = valloc(3); // TODO: guard pages + size of text
+    user_code_section.as_mut_ref().guard();
+
+    let user_code_section = user_code_section.register();
+
+    // Map the code section.
+    map_region(
+        user_code_section,
+        PageTableFlags::PRESENT
+            | PageTableFlags::WRITABLE
+            | PageTableFlags::USER_ACCESSIBLE
+            | PageTableFlags::NO_EXECUTE,
+    );
+
+    // TODO: load the code
 
     unimplemented!();
     // TODO
@@ -24,10 +42,22 @@ pub fn load_user_code_section() -> (ResourceHandle<VirtualMemoryRegion>, usize) 
 /// guard pages. The stack should be used from the end (high-addresses) of the region (top of
 /// stack), since it grows downward.
 pub fn allocate_user_stack() -> ResourceHandle<VirtualMemoryRegion> {
-    let user_stack = valloc(3); // TODO: guard pages + stack size
+    // Allocate the stack the user will run on.
+    let mut user_stack = valloc(2 + USER_STACK_SIZE); // guard pages + stack size
+    user_stack.as_mut_ref().guard();
 
-    unimplemented!();
-    // TODO
+    let user_stack = user_stack.register();
+
+    // Map the stack into the address space.
+    map_region(
+        user_stack,
+        PageTableFlags::PRESENT
+            | PageTableFlags::WRITABLE
+            | PageTableFlags::USER_ACCESSIBLE
+            | PageTableFlags::NO_EXECUTE,
+    );
+
+    user_stack
 }
 
 /// Switch to user mode, executing the given code with the given address.
