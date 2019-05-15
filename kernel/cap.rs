@@ -40,6 +40,8 @@ use rand::{Rng, SeedableRng};
 
 use spin::Mutex;
 
+use x86_64::structures::paging::{PageSize, Size4KiB};
+
 /// A registry of cabilities.
 static CAPABILITY_REGISTRY: Mutex<Option<BTreeMap<u128, Box<dyn Enable>>>> = Mutex::new(None);
 
@@ -67,9 +69,10 @@ pub fn init() {
 ///
 /// It should be safe to send capabilities between (kernel) threads, even though in user mode,
 /// resource handles are used instead.
-pub trait Enable: Send {}
+pub trait Enable: Send + core::fmt::Debug {}
 
 /// A handle to a resource in the capability registry.
+#[derive(Debug)]
 pub struct ResourceHandle<R: Enable + 'static> {
     /// An index into the capability registry.
     key: u128,
@@ -78,28 +81,68 @@ pub struct ResourceHandle<R: Enable + 'static> {
     _resource: PhantomData<&'static R>,
 }
 
-pub fn register<R: Enable + 'static>(cap: R) -> ResourceHandle<R> {
-    let mut locked = CAPABILITY_REGISTRY.lock();
+impl<R: Enable + 'static> Clone for ResourceHandle<R> {
+    fn clone(&self) -> Self {
+        ResourceHandle {
+            key: self.key.clone(),
+            _resource: PhantomData,
+        }
+    }
+}
 
-    // Generate a new random key. We are generating 128-bit random value, so the odds of a
-    // collision by chance or by malicious users are extremely low.
-    //
-    // NOTE: I am not actually using a random sequence because I am seeding the RNG.
-    let mut rand = rand::rngs::StdRng::from_seed([0; 32]).gen();
+impl<R: Enable + 'static> Copy for ResourceHandle<R> {}
 
-    while locked.as_mut().unwrap().contains_key(&rand) {
-        // extremely unlikely...
-        rand = rand;
+/// A capability that has not been registered yet.  An unregistered capability can be modified
+/// until it is registered.
+#[derive(Debug)]
+pub struct UnregisteredResourceHandle<R: Enable + 'static> {
+    resource: R,
+}
+
+impl<R: Enable + 'static> UnregisteredResourceHandle<R> {
+    /// Create a new unregistered resource handle.
+    pub fn new(resource: R) -> Self {
+        UnregisteredResourceHandle { resource }
     }
 
-    locked.as_mut().unwrap().insert(rand, Box::new(cap));
+    /// Register this unregistered resource handle. After this is done, the resource handle cannot
+    /// be updated.
+    pub fn register(self) -> ResourceHandle<R> {
+        let mut locked = CAPABILITY_REGISTRY.lock();
 
-    ResourceHandle {
-        key: rand,
-        _resource: PhantomData,
+        // Generate a new random key. We are generating 128-bit random value, so the odds of a
+        // collision by chance or by malicious users are extremely low.
+        //
+        // NOTE: I am not actually using a random sequence because I am seeding the RNG.
+        let mut rand = rand::rngs::StdRng::from_seed([0; 32]).gen();
+
+        while locked.as_mut().unwrap().contains_key(&rand) {
+            // extremely unlikely...
+            rand = rand;
+        }
+
+        locked
+            .as_mut()
+            .unwrap()
+            .insert(rand, Box::new(self.resource));
+
+        ResourceHandle {
+            key: rand,
+            _resource: PhantomData,
+        }
+
+        // unlock
     }
 
-    // unlock
+    /// Return an immutable reference to the resource.
+    pub fn as_ref(&self) -> &R {
+        &self.resource
+    }
+
+    /// Return a mutable reference to the resource.
+    pub fn as_mut_ref(&mut self) -> &mut R {
+        &mut self.resource
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,18 +150,25 @@ pub fn register<R: Enable + 'static>(cap: R) -> ResourceHandle<R> {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Capability on a memory region.
+#[derive(Debug)]
 pub struct VirtualMemoryRegion {
-    /// The first virtual address of the memory region.
-    addr: usize,
+    /// The first virtual address of the memory region (bytes).
+    addr: u64,
 
-    /// The length of the memory region.
-    len: usize,
+    /// The length of the memory region (bytes).
+    len: u64,
 }
 
 impl VirtualMemoryRegion {
     /// Create a capability for the given virtual address region. It is up to the caller to make
     /// sure that region is valid before constructing the capability.
-    pub unsafe fn new(addr: usize, len: usize) -> Self {
+    pub unsafe fn new(addr: u64, len: u64) -> Self {
+        // Sanity check
+        assert_eq!(addr % Size4KiB::SIZE, 0); // page-aligned
+        assert_eq!(len % Size4KiB::SIZE, 0); // multiple of page size
+        assert_ne!(addr, 0); // non-null
+        assert!(len > 0); // non-empty
+
         VirtualMemoryRegion { addr, len }
     }
 
@@ -126,14 +176,26 @@ impl VirtualMemoryRegion {
     ///
     /// It is the user's job to make sure that the correct mappings exist before accessing the
     /// address.
-    pub unsafe fn start(&self) -> usize {
-        self.addr
+    pub fn start(&self) -> *mut u8 {
+        self.addr as *mut u8
+    }
+
+    /// The length of the region (in bytes).
+    pub fn len(&self) -> u64 {
+        self.len
+    }
+
+    /// Shrink the region by one page at the beginning and end to account for guard pages.
+    pub fn guard(&mut self) {
+        self.addr -= Size4KiB::SIZE;
+        self.len -= Size4KiB::SIZE;
     }
 }
 
 impl Enable for VirtualMemoryRegion {}
 
 /// Capability on a group of capabilities.
+#[derive(Debug)]
 pub struct CapabilityGroup {
     caps: Vec<Box<dyn Enable>>,
 }
