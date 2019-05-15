@@ -29,7 +29,7 @@ mod continuation;
 mod interrupts;
 mod io;
 mod memory;
-mod process;
+mod sched;
 mod time;
 
 use alloc::vec;
@@ -44,12 +44,12 @@ static mut ALLOCATOR: memory::KernelAllocator = memory::KernelAllocator::new();
 /// This is the entry point to the kernel. It is the first rust code that runs.
 #[no_mangle]
 pub fn kernel_main() -> ! {
-    use crate::process::user;
+    use crate::sched::user;
 
     // At this point we are still in the provisional environment with
     // - the temporary page tables (first 2MiB of memory direct mapped)
     // - no IDT
-    // - no current process
+    // - no current task
 
     // Make sure interrupts are off
     x86_64::instructions::interrupts::disable();
@@ -81,7 +81,7 @@ pub fn kernel_main() -> ! {
 
     // Create the init task
     printk!("Taskes");
-    process::init(Continuation::new(|_| {
+    sched::init(Continuation::new(|_| {
         printk!("Init task running!\n");
         ContResult::Success(vec![(
             EventKind::Until(SysTime::now().after(4)),
@@ -117,7 +117,7 @@ pub fn kernel_main() -> ! {
     x86_64::instructions::interrupts::enable();
 
     // Start the first task
-    process::start();
+    sched::start();
 
     // We never return...
 }

@@ -2,7 +2,7 @@
 
 use alloc::{boxed::Box, vec, vec::Vec};
 
-use process::sched;
+use sched;
 use time::SysTime;
 
 /// Different kinds of events a continuation can wait for.
