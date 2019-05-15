@@ -67,7 +67,6 @@ impl E820Info {
         // performance is not an issue.
 
         // First, get all the info from e820.
-        // TODO: Only the first `memory_map_count` entries are valid.
         let info: Vec<_> = unsafe { &memory_map }
             .iter()
             .take(unsafe { memory_map_count as usize })
