@@ -9,6 +9,8 @@ this repo. Generally, `master` should compile and run.
 
 # WIP
 
+- Currently getting a double fault when using RNG... need to debug
+
 - Userspace
     - Need to load the user code into the new virtual memory region.
         - Need some sort of ELF loader... `gz/rust-elfloader` looks promising.

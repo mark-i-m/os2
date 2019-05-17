@@ -128,11 +128,15 @@ impl<R: Enable + 'static> UnregisteredResourceHandle<R> {
     pub fn register(self) -> ResourceHandle<R> {
         let mut locked = CAPABILITY_REGISTRY.lock();
 
+        printk!("asdf test before"); // TODO
+
         // Generate a new random key. We are generating 128-bit random value, so the odds of a
         // collision by chance or by malicious users are extremely low.
         //
         // NOTE: I am not actually using a random sequence because I am seeding the RNG.
         let mut rand = rand::rngs::StdRng::from_seed([0; 32]).gen();
+
+        printk!("asdf test"); // TODO
 
         while locked.as_mut().unwrap().contains_key(&rand) {
             // extremely unlikely...
