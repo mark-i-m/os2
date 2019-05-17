@@ -34,7 +34,7 @@
 
 use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 
-use core::marker::PhantomData;
+use core::{any::Any, marker::PhantomData};
 
 use rand::{Rng, SeedableRng};
 
@@ -67,7 +67,7 @@ pub fn init() {
 ///
 /// It should be safe to send capabilities between (kernel) threads, even though in user mode,
 /// resource handles are used instead.
-pub trait Enable: Send + core::fmt::Debug {}
+pub trait Enable: Any + Send + core::fmt::Debug {}
 
 /// A handle to a resource in the capability registry.
 #[derive(Debug)]
@@ -77,6 +77,26 @@ pub struct ResourceHandle<R: Enable + 'static> {
 
     /// Conceptually, the resource handle owns a reference to the resource.
     _resource: PhantomData<&'static R>,
+}
+
+impl<R: Enable + 'static> ResourceHandle<R> {
+    /// Get an immutable reference to the resource.
+    ///
+    /// This is tied to the lifetime of the `ResourceHandle`.
+    pub fn get<'r>(&'r self) -> &'r R {
+        CAPABILITY_REGISTRY
+            .lock()
+            .as_ref()
+            .unwrap()
+            .get(&self.key)
+            .map(|resource| unsafe {
+                core::mem::transmute::<&dyn Enable, &dyn Any>(resource.as_ref())
+            })
+            .unwrap()
+            .downcast_ref()
+            .unwrap()
+        // TODO: this seems unsound... is the lock still being held here?
+    }
 }
 
 impl<R: Enable + 'static> Clone for ResourceHandle<R> {

@@ -15,10 +15,7 @@ const USER_STACK_SIZE: usize = 1; // pages
 /// Returns the virtual address region where the code has been loaded and the first RIP to start
 /// executing.
 pub fn load_user_code_section() -> (ResourceHandle<VirtualMemoryRegion>, usize) {
-    let mut user_code_section = VirtualMemoryRegion::alloc_with_guard(1); // TODO
-    user_code_section.as_mut_ref().guard();
-
-    let user_code_section = user_code_section.register();
+    let user_code_section = VirtualMemoryRegion::alloc_with_guard(1).register(); // TODO
 
     // Map the code section.
     map_region(
@@ -31,6 +28,11 @@ pub fn load_user_code_section() -> (ResourceHandle<VirtualMemoryRegion>, usize) 
 
     // TODO: load the code
 
+    // TODO: test
+    unsafe {
+        *user_code_section.get().start() = 0;
+    }
+
     unimplemented!();
 }
 
@@ -42,10 +44,7 @@ pub fn load_user_code_section() -> (ResourceHandle<VirtualMemoryRegion>, usize) 
 /// stack), since it grows downward.
 pub fn allocate_user_stack() -> ResourceHandle<VirtualMemoryRegion> {
     // Allocate the stack the user will run on.
-    let mut user_stack = VirtualMemoryRegion::alloc_with_guard(USER_STACK_SIZE);
-    user_stack.as_mut_ref().guard();
-
-    let user_stack = user_stack.register();
+    let user_stack = VirtualMemoryRegion::alloc_with_guard(USER_STACK_SIZE).register();
 
     // Map the stack into the address space.
     map_region(
