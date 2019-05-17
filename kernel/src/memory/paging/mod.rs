@@ -41,6 +41,13 @@ static VIRT_MEM_ALLOC: Mutex<Option<BuddyAllocator<usize>>> = Mutex::new(None);
 
 /// The page tables for the system.
 static PAGE_TABLES: Mutex<Option<RecursivePageTable>> = Mutex::new(None);
+///
+/// The set of allowed pages. These pages are allowed to take a page fault.
+///
+/// Current format: (start, (len, flags))
+///
+/// TODO: We should check permissions/capabilities for the fault first.
+static ALLOWED: Mutex<Option<BTreeMap<u64, (u64, PageTableFlags)>>> = Mutex::new(None);
 
 /// Address of guard page of the kernel heap (page before the first page of the heap).
 pub const KERNEL_HEAP_GUARD: u64 = (32 << 20) - (1 << 12);
@@ -250,6 +257,9 @@ pub fn init(boot_info: &'static BootInfo) {
         vmem_alloc.as_mut().unwrap().extend(*start, *end);
     }
 
+    let mut allowed = ALLOWED.lock();
+    *allowed = Some(BTreeMap::new());
+
     printk!("\tvirtual address allocator inited\n");
 }
 
@@ -311,17 +321,25 @@ impl VirtualMemoryRegion {
 
     /// Shrink the region by one page at the beginning and end to account for guard pages.
     pub fn guard(&mut self) {
-        self.addr -= Size4KiB::SIZE;
-        self.len -= Size4KiB::SIZE;
+        self.addr += Size4KiB::SIZE;
+        self.len -= Size4KiB::SIZE * 2;
     }
 }
 
 impl Enable for VirtualMemoryRegion {}
 
-/// Add page table entries for the given virtual memory region, but don't mark them present or
-/// allocate pages. Demand paging will populate them as needed.
+/// Mark the `region` as usable with the given `flags`. This does not allocate any physical memory.
+/// Pages will be allocated by demand paging.
 pub fn map_region(region: ResourceHandle<VirtualMemoryRegion>, flags: PageTableFlags) {
-    todo!();
+    let (start, len) = {
+        let region = region.get();
+        (region.start(), region.len())
+    };
+    ALLOWED
+        .lock()
+        .as_mut()
+        .unwrap()
+        .insert(start as u64, (len, flags));
 }
 
 /// Handle a page fault
@@ -332,7 +350,7 @@ pub extern "x86-interrupt" fn handle_page_fault(
     _error: PageFaultErrorCode,
 ) {
     // Read CR2 to get the page fault address
-    let cr2: usize;
+    let cr2: u64;
     unsafe {
         asm! {
             "movq %cr2, $0"
@@ -343,9 +361,23 @@ pub extern "x86-interrupt" fn handle_page_fault(
         };
     }
 
-    todo!(
-        "Page fault at ip {:x}, addr {:x}",
-        esf.instruction_pointer.as_u64(),
-        cr2,
-    );
+    // Check if the page is allowed. We need to check if any range contains the fault address.
+    if let Some((start, (len, flags))) = ALLOWED.lock().as_ref().unwrap().range(0..=cr2).next_back()
+    {
+        // TODO: map the correct region
+        panic!(
+            "Page fault at ip {:x}, addr {:x}. Found region start: {}, len: {}, flags: {:?}",
+            esf.instruction_pointer.as_u64(),
+            cr2,
+            start,
+            len,
+            flags
+        );
+    } else {
+        panic!(
+            "Segfault at ip {:x}, addr {:x}",
+            esf.instruction_pointer.as_u64(),
+            cr2,
+        );
+    }
 }
