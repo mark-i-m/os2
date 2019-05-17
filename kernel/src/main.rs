@@ -77,6 +77,29 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     cap::init();
     printk!("Capabilities ✔\n");
 
+    // TODO: remove testing code
+    {
+        use x86_64::structures::paging::PageTableFlags;
+
+        let user_code_section = crate::memory::VirtualMemoryRegion::alloc_with_guard(1); // TODO
+        printk!("test1 {:?}\n", user_code_section);
+
+        let user_code_section = user_code_section.register();
+
+        printk!("test3 {:?}\n", user_code_section);
+
+        // Map the code section.
+        crate::memory::map_region(
+            user_code_section,
+            PageTableFlags::PRESENT
+                | PageTableFlags::WRITABLE
+                | PageTableFlags::USER_ACCESSIBLE
+                | PageTableFlags::NO_EXECUTE,
+        );
+
+        panic!("success");
+    }
+
     // Create the init task
     printk!("Taskes");
     sched::init(Continuation::new(|_| {
@@ -89,7 +112,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                     EventKind::Keyboard,
                     Continuation::new(|ev| {
                         if let Event::Keyboard(c) = ev {
-                            printk!("User typed '{}'", c as char);
+                            printk!("User typed '{}'\n", c as char);
                         } else {
                             unreachable!();
                         }
