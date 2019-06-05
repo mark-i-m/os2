@@ -4,6 +4,7 @@ use spin::Mutex;
 
 use x86_64::{
     instructions::{segmentation::set_cs, tables::load_tss},
+    registers::{model_specific::Msr, rflags::RFlags},
     structures::{
         gdt::{Descriptor, DescriptorFlags, GlobalDescriptorTable},
         idt::{InterruptDescriptorTable, InterruptStackFrame},
@@ -20,7 +21,7 @@ mod pit;
 /// The index in the TSS of the first Interrupt stack frame.
 const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
-/// The number of bytes of the Interrupt Stack Frame.
+/// Number of bytes of the IST stack frame.
 const IST_FRAME_SIZE: usize = 4096;
 
 /// The Task State Segment.
@@ -31,6 +32,17 @@ pub static IDT: Mutex<Option<InterruptDescriptorTable>> = Mutex::new(None);
 
 /// Global Descriptor Table.
 static GDT: Mutex<Option<GlobalDescriptorTable>> = Mutex::new(None);
+
+// Some MSRs used for system call handling.
+
+/// Contains the stack and code segmets for syscall/sysret.
+const IA32_STAR: Msr = Msr::new(0xC000_0081);
+
+/// Contains the kernel rip for syscall handler.
+const IA32_LSTAR: Msr = Msr::new(0xC000_0082);
+
+/// Contains the kernel rflags mask for syscall.
+const IA32_FMASK: Msr = Msr::new(0xC000_0084);
 
 /// Initialize interrupts (and exceptions).
 pub fn init() {
@@ -63,7 +75,17 @@ pub fn init() {
     };
 
     // Initalize GDT
-    let code_selector = gdt.add_entry(Descriptor::kernel_code_segment());
+
+    // NOTE: kernel CS must be the one before kernel SS
+    let kernel_code_seg = gdt.add_entry(Descriptor::kernel_code_segment());
+    let _kernel_stack_seg = gdt.add_entry(Descriptor::kernel_code_segment()); // TODO
+
+    // NOTE: user SS must be the one before user CS
+    let user_stack_seg = gdt.add_entry(Descriptor::UserSegment(
+        (DescriptorFlags::USER_SEGMENT | DescriptorFlags::PRESENT | DescriptorFlags::LONG_MODE)
+            .bits()
+            | (3 << 45), // FIXME: the 3<<45 is the DPL (ring 3)
+    ));
     let _user_code_seg = gdt.add_entry(Descriptor::UserSegment(
         (DescriptorFlags::USER_SEGMENT
             | DescriptorFlags::PRESENT
@@ -72,6 +94,7 @@ pub fn init() {
             .bits()
             | (3 << 45), // FIXME: the 3<<45 is the DPL (ring 3)
     ));
+
     let tss_selector = gdt.add_entry(Descriptor::tss_segment(tss_ref));
 
     *GDT.lock() = Some(gdt);
@@ -83,7 +106,7 @@ pub fn init() {
     };
     gdt_ref.load();
     unsafe {
-        set_cs(code_selector);
+        set_cs(kernel_code_seg);
         load_tss(tss_selector);
     }
 
@@ -138,4 +161,17 @@ extern "x86-interrupt" fn handle_double_fault(esf: &mut InterruptStackFrame, err
         esf.instruction_pointer.as_u64(),
         esf.cpu_flags
     );
+}
+
+/// Handle a `syscall` instruction
+#[naked]
+extern "C" fn handle_syscall() {
+    // TODO: switch to kernel stack, save user regs
+    //
+    // https://software.intel.com/sites/default/files/managed/39/c5/325462-sdm-vol-1-2abcd-3abcd.pdf#G43.25974
+    //
+    // TODO: for syscall handling: see the warnings at the end of the above chapter in the Intel
+    // SDM (e.g. regarding interrupts, user stack)
+
+    panic!("syscall",);
 }

@@ -5,7 +5,8 @@
     box_syntax,
     abi_x86_interrupt,
     panic_info_message,
-    drain_filter
+    drain_filter,
+    naked_functions
 )]
 // Compile without libstd
 #![no_std]
