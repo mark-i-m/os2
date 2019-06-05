@@ -3,7 +3,7 @@
 use x86_64::structures::paging::PageTableFlags;
 
 use crate::{
-    cap::{Capability, ResourceHandle},
+    cap::ResourceHandle,
     memory::{map_region, VirtualMemoryRegion},
 };
 
@@ -26,17 +26,32 @@ pub fn load_user_code_section() -> (ResourceHandle, usize) {
             | PageTableFlags::NO_EXECUTE,
     );
 
-    // TODO: load the code EBFE
+    // TODO: load the code
 
-    // TODO: test
-    user_code_section.with(|cap| {
-        let user_code_section = cap_unwrap!(VirtualMemoryRegion(cap));
+    // TODO: this is test code that is an infinite loop followed by nops
+    let start_addr = user_code_section.with(|cap| {
+        const TEST_CODE: &[u8] = &[
+            0xEB, 0xFE, // here: jmp here
+            0x90, // nop
+            0x90, // nop
+            0x90, // nop
+            0x90, // nop
+            0x90, // nop
+            0x90, // nop
+            0x90, // nop
+            0x90, // nop
+        ];
+
         unsafe {
-            *user_code_section.start() = 0;
+            let start = cap_unwrap!(VirtualMemoryRegion(cap)).start();
+            for (i, b) in TEST_CODE.iter().enumerate() {
+                start.offset(i as isize).write(*b);
+            }
+            start as usize
         }
     });
 
-    unimplemented!();
+    (user_code_section, start_addr)
 }
 
 /// Allocates virtual address space for the user stack (fixed size). Adds appropriate page table
@@ -63,9 +78,41 @@ pub fn allocate_user_stack() -> ResourceHandle {
 
 /// Switch to user mode, executing the given code with the given address.
 pub fn switch_to_user(code: (ResourceHandle, usize), stack: ResourceHandle) -> ! {
-    // TODO: setup the stack to do iret
+    // Get new rsp and rip values.
+    let rsp = stack.with(|cap| {
+        let region = cap_unwrap!(VirtualMemoryRegion(cap));
+        let start = region.start();
+        let len = region.len();
+        unsafe { start.offset(len as isize) }
+    });
 
-    // TODO: smash the stack
+    let (_handle, rip) = code;
 
-    unimplemented!();
+    // TODO: use sysret
+    //
+    // https://software.intel.com/sites/default/files/managed/39/c5/325462-sdm-vol-1-2abcd-3abcd.pdf#G43.25974
+    //
+    // TODO: use WRMSR to set the following MSRs as needed. This should probably be done just once
+    // at boot time. For sysret (kernel -> user):
+    // - user code segment: IA32_STAR[63:48] + 16
+    // - stack segment:     IA32_STAR[64:48] + 8
+    //
+    // TODO: and for syscall (user -> kernel):
+    // - kernel code segment: IA32_STAR[47:32]
+    // - stack segment:       IA32_STAR[47:32] + 8
+    // - kernel rip:          IA32_LSTAR
+    // - kernel rflags:       %rflags & !(IA32_FMASK)
+    //
+    // TODO: for syscall handling: see the warnings at the end of the above chapter in the Intel
+    // SDM (e.g. regarding interrupts, user stack)
+    //
+    // TODO: so in this routine (switch_to_user), all we need to do is set the following and
+    // execute the `sysret` instruction:
+    // - user rip: load into rcx before sysret
+    // - rflags: load into r11 before sysret
+    // - also want to set any register values to be given to the user
+    //      - user rsp
+    //      - clear all other regs
+
+    unreachable!();
 }

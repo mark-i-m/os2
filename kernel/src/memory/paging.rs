@@ -12,6 +12,8 @@
 //! `BootInfo` struct contains the current state of memory, including memory already allocated by
 //! the bootload for page tables, kernel text, etc...
 
+use alloc::collections::BTreeMap;
+
 use bootloader::BootInfo;
 
 use buddy::BuddyAllocator;
@@ -30,7 +32,7 @@ use x86_64::{
     PhysAddr, VirtAddr,
 };
 
-use crate::cap::{Enable, ResourceHandle, UnregisteredResourceHandle};
+use crate::cap::{Capability, ResourceHandle, UnregisteredResourceHandle};
 
 /// The kernel's physical frame allocator. It returns frame numbers, not physical addresses.
 static PHYS_MEM_ALLOC: Mutex<Option<phys::BuddyAllocator>> = Mutex::new(None);

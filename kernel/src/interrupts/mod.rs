@@ -5,7 +5,7 @@ use spin::Mutex;
 use x86_64::{
     instructions::{segmentation::set_cs, tables::load_tss},
     structures::{
-        gdt::{Descriptor, GlobalDescriptorTable},
+        gdt::{Descriptor, DescriptorFlags, GlobalDescriptorTable},
         idt::{InterruptDescriptorTable, InterruptStackFrame},
         tss::TaskStateSegment,
     },
@@ -64,6 +64,14 @@ pub fn init() {
 
     // Initalize GDT
     let code_selector = gdt.add_entry(Descriptor::kernel_code_segment());
+    let _user_code_seg = gdt.add_entry(Descriptor::UserSegment(
+        (DescriptorFlags::USER_SEGMENT
+            | DescriptorFlags::PRESENT
+            | DescriptorFlags::EXECUTABLE
+            | DescriptorFlags::LONG_MODE)
+            .bits()
+            | (3 << 45), // FIXME: the 3<<45 is the DPL (ring 3)
+    ));
     let tss_selector = gdt.add_entry(Descriptor::tss_segment(tss_ref));
 
     *GDT.lock() = Some(gdt);
