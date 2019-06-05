@@ -18,6 +18,7 @@ extern crate alloc;
 #[macro_use]
 mod debug;
 mod bare_bones;
+#[macro_use]
 mod cap;
 mod continuation;
 mod interrupts;

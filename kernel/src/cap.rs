@@ -16,7 +16,7 @@
 //! registry.
 //!
 //! However, passing around a lot of capabilities still means passing around a lot of 128-bit
-//! handles. To mitigate this, handles can be grouped into a `ResourceGroup`, which is a capability
+//! handles. To mitigate this, handles can be grouped into a `CapabilityGroup`, which is a capability
 //! that contains other capabilities and gives access to all of them. To keep things simple,
 //! capability groups may _not_ have other groups in them.
 //!
@@ -34,14 +34,14 @@
 
 use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 
-use core::{any::Any, marker::PhantomData};
-
 use rand::{Rng, SeedableRng};
 
 use spin::Mutex;
 
+use crate::memory::VirtualMemoryRegion;
+
 /// A registry of cabilities.
-static CAPABILITY_REGISTRY: Mutex<Option<BTreeMap<u128, Box<dyn Enable>>>> = Mutex::new(None);
+static CAPABILITY_REGISTRY: Mutex<Option<BTreeMap<u128, Box<Capability>>>> = Mutex::new(None);
 
 /// Init the capability system.
 pub fn init() {
@@ -63,69 +63,82 @@ pub fn init() {
     }
 }
 
-/// All capabilities implement this trait.
-///
-/// It should be safe to send capabilities between (kernel) threads, even though in user mode,
-/// resource handles are used instead.
-pub trait Enable: Any + Send + core::fmt::Debug {}
+/// A capability on a single resource. Having this capability gives access to the resource.
+/// Capabilities should be registered in the `CAPABILITY_REGISTRY` before use so that the kernel
+/// can check them when needed.
+#[derive(Debug)]
+pub enum Capability {
+    /// A group of capabilities that are given together.
+    #[allow(dead_code)]
+    CapabilityGroup(CapabilityGroup),
+
+    /// A capability on a region of the virtual address space.
+    VirtualMemoryRegion(VirtualMemoryRegion),
+}
+
+/// Used to unwrap a capability when you know statically what type it is.
+#[macro_export]
+macro_rules! cap_unwrap {
+    ($ty:ident ( $cap:expr )) => {
+        if let $crate::cap::Capability::$ty(cap) = $cap {
+            cap
+        } else {
+            unreachable!();
+        }
+    };
+}
 
 /// A handle to a resource in the capability registry.
 #[derive(Debug)]
-pub struct ResourceHandle<R: Enable + 'static> {
+pub struct ResourceHandle {
     /// An index into the capability registry.
     key: u128,
-
-    /// Conceptually, the resource handle owns a reference to the resource.
-    _resource: PhantomData<&'static R>,
 }
 
-impl<R: Enable + 'static> ResourceHandle<R> {
-    /// Get an immutable reference to the resource.
+impl ResourceHandle {
+    /// Runs `f` with an immutable reference to this capability, returning the value that `f`
+    /// returns to the caller.
     ///
-    /// This is tied to the lifetime of the `ResourceHandle`.
-    pub fn get<'r>(&'r self) -> &'r R {
-        CAPABILITY_REGISTRY
-            .lock()
-            .as_ref()
-            .unwrap()
-            .get(&self.key)
-            .map(|resource| unsafe {
-                core::mem::transmute::<&dyn Enable, &dyn Any>(resource.as_ref())
-            })
-            .unwrap()
-            .downcast_ref()
-            .unwrap()
-        // TODO: this seems unsound... is the lock still being held here?
+    /// NOTE: This method holds the registry lock, so nothing expensive should be done in `f`.
+    pub fn with<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&Capability) -> R,
+    {
+        let reg = CAPABILITY_REGISTRY.lock();
+        let cap = reg.as_ref().unwrap().get(&self.key).unwrap();
+
+        f(cap)
+
+        // unlock
     }
 }
 
-impl<R: Enable + 'static> Clone for ResourceHandle<R> {
+impl Clone for ResourceHandle {
     fn clone(&self) -> Self {
         ResourceHandle {
             key: self.key.clone(),
-            _resource: PhantomData,
         }
     }
 }
 
-impl<R: Enable + 'static> Copy for ResourceHandle<R> {}
+impl Copy for ResourceHandle {}
 
 /// A capability that has not been registered yet.  An unregistered capability can be modified
 /// until it is registered.
 #[derive(Debug)]
-pub struct UnregisteredResourceHandle<R: Enable + 'static> {
-    resource: R,
+pub struct UnregisteredResourceHandle {
+    resource: Capability,
 }
 
-impl<R: Enable + 'static> UnregisteredResourceHandle<R> {
+impl UnregisteredResourceHandle {
     /// Create a new unregistered resource handle.
-    pub fn new(resource: R) -> Self {
+    pub fn new(resource: Capability) -> Self {
         UnregisteredResourceHandle { resource }
     }
 
     /// Register this unregistered resource handle. After this is done, the resource handle cannot
     /// be updated.
-    pub fn register(self) -> ResourceHandle<R> {
+    pub fn register(self) -> ResourceHandle {
         let mut locked = CAPABILITY_REGISTRY.lock();
 
         printk!("asdf test before"); // TODO
@@ -148,21 +161,19 @@ impl<R: Enable + 'static> UnregisteredResourceHandle<R> {
             .unwrap()
             .insert(rand, Box::new(self.resource));
 
-        ResourceHandle {
-            key: rand,
-            _resource: PhantomData,
-        }
+        ResourceHandle { key: rand }
 
         // unlock
     }
 
     /// Return an immutable reference to the resource.
-    pub fn as_ref(&self) -> &R {
+    #[allow(dead_code)]
+    pub fn as_ref(&self) -> &Capability {
         &self.resource
     }
 
     /// Return a mutable reference to the resource.
-    pub fn as_mut_ref(&mut self) -> &mut R {
+    pub fn as_mut_ref(&mut self) -> &mut Capability {
         &mut self.resource
     }
 }
@@ -174,14 +185,13 @@ impl<R: Enable + 'static> UnregisteredResourceHandle<R> {
 /// Capability on a group of capabilities.
 #[derive(Debug)]
 pub struct CapabilityGroup {
-    caps: Vec<Box<dyn Enable>>,
+    caps: Vec<Capability>,
 }
 
 impl CapabilityGroup {
-    pub fn new(caps: Vec<Box<dyn Enable>>) -> Self {
+    #[allow(dead_code)]
+    pub fn new(caps: Vec<Capability>) -> Self {
         // TODO: make sure there are no groups within...
         CapabilityGroup { caps }
     }
 }
-
-impl Enable for CapabilityGroup {}

@@ -285,7 +285,7 @@ impl VirtualMemoryRegion {
     /// # Panics
     ///
     /// If we exhaust the virtual address space.
-    pub fn alloc(npages: usize) -> UnregisteredResourceHandle<Self> {
+    pub fn alloc(npages: usize) -> UnregisteredResourceHandle {
         let mem = VIRT_MEM_ALLOC
             .lock()
             .as_mut()
@@ -293,16 +293,20 @@ impl VirtualMemoryRegion {
             .alloc(npages)
             .expect("Out of virtual memory.");
 
-        UnregisteredResourceHandle::new(VirtualMemoryRegion {
+        UnregisteredResourceHandle::new(Capability::VirtualMemoryRegion(VirtualMemoryRegion {
             addr: mem as u64 * Size4KiB::SIZE,
             len: npages as u64 * Size4KiB::SIZE,
-        })
+        }))
     }
 
     /// Like `alloc`, but adds 2 to npages and calls `guard`.
-    pub fn alloc_with_guard(npages: usize) -> UnregisteredResourceHandle<Self> {
+    pub fn alloc_with_guard(npages: usize) -> UnregisteredResourceHandle {
         let mut mem = Self::alloc(npages + 2);
-        mem.as_mut_ref().guard();
+        if let Capability::VirtualMemoryRegion(mem) = mem.as_mut_ref() {
+            mem.guard();
+        } else {
+            unreachable!();
+        }
         mem
     }
 
@@ -326,14 +330,14 @@ impl VirtualMemoryRegion {
     }
 }
 
-impl Enable for VirtualMemoryRegion {}
-
 /// Mark the `region` as usable with the given `flags`. This does not allocate any physical memory.
 /// Pages will be allocated by demand paging.
-pub fn map_region(region: ResourceHandle<VirtualMemoryRegion>, flags: PageTableFlags) {
+pub fn map_region(region: ResourceHandle, flags: PageTableFlags) {
     let (start, len) = {
-        let region = region.get();
-        (region.start(), region.len())
+        region.with(|cap| {
+            let region = cap_unwrap!(VirtualMemoryRegion(cap));
+            (region.start(), region.len())
+        })
     };
     ALLOWED
         .lock()
