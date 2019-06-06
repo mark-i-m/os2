@@ -34,7 +34,7 @@
 
 use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 
-use rand::{Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 use spin::Mutex;
 
@@ -43,24 +43,15 @@ use crate::memory::VirtualMemoryRegion;
 /// A registry of cabilities.
 static CAPABILITY_REGISTRY: Mutex<Option<BTreeMap<u128, Box<Capability>>>> = Mutex::new(None);
 
+/// RNG for capability numbers.
+static CAPABILITY_RNG: Mutex<Option<Box<StdRng>>> = Mutex::new(None);
+
 /// Init the capability system.
 pub fn init() {
     *CAPABILITY_REGISTRY.lock() = Some(BTreeMap::new());
 
-    #[cfg(test)]
-    {
-        // Type testing: make sure that everything has the right trait bounds.
-        CAPABILITY_REGISTRY
-            .lock()
-            .as_mut()
-            .unwrap()
-            .insert(0, Box::new(unsafe { VirtualMemoryRegion::new(0, 0) }));
-        CAPABILITY_REGISTRY
-            .lock()
-            .as_mut()
-            .unwrap()
-            .insert(0, Box::new(CapabilityGroup::new()));
-    }
+    // TODO: this causes a stack overflow :(
+    *CAPABILITY_RNG.lock() = Some(box StdRng::seed_from_u64(0));
 }
 
 /// A capability on a single resource. Having this capability gives access to the resource.
@@ -141,15 +132,11 @@ impl UnregisteredResourceHandle {
     pub fn register(self) -> ResourceHandle {
         let mut locked = CAPABILITY_REGISTRY.lock();
 
-        printk!("asdf test before"); // TODO
-
         // Generate a new random key. We are generating 128-bit random value, so the odds of a
         // collision by chance or by malicious users are extremely low.
         //
         // NOTE: I am not actually using a random sequence because I am seeding the RNG.
-        let mut rand = rand::rngs::StdRng::from_seed([0; 32]).gen();
-
-        printk!("asdf test"); // TODO
+        let mut rand = { CAPABILITY_RNG.lock().as_mut().unwrap().gen() }; // unlock
 
         while locked.as_mut().unwrap().contains_key(&rand) {
             // extremely unlikely...

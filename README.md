@@ -9,7 +9,15 @@ this repo. Generally, `master` should compile and run.
 
 # WIP
 
-- Currently getting a double fault when using RNG... need to debug
+- Currently getting a double fault when using RNG.
+    - The `rand` RNGs are not optimized for use on small stacks. The kernel
+      stack is 2 pages (8KB), but the RNG we are using has multiple recursive
+      functions that allocate large structures on the stack. In our context,
+      this causes a stack overflow, which causes a double fault.
+    - Current solution is to defer init of RNG until we are running the init
+      task, which has a large stack.
+    - However, now heap allocator init is causing a deadlock. Looks like memory
+      is corrupted somewhere.
 
 - Userspace
     - Need to load the user code into the new virtual memory region.

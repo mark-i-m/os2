@@ -74,38 +74,18 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     io::init();
     printk!("I/O ✔\n");
 
-    // Capabilities
-    printk!("Capabilities ...\n");
-    cap::init();
-    printk!("Capabilities ✔\n");
-
-    // TODO: remove testing code
-    {
-        use x86_64::structures::paging::PageTableFlags;
-
-        let user_code_section = crate::memory::VirtualMemoryRegion::alloc_with_guard(1); // TODO
-        printk!("test1 {:?}\n", user_code_section);
-
-        let user_code_section = user_code_section.register();
-
-        printk!("test3 {:?}\n", user_code_section);
-
-        // Map the code section.
-        crate::memory::map_region(
-            user_code_section,
-            PageTableFlags::PRESENT
-                | PageTableFlags::WRITABLE
-                | PageTableFlags::USER_ACCESSIBLE
-                | PageTableFlags::NO_EXECUTE,
-        );
-
-        panic!("success");
-    }
-
-    // Create the init task
+    // Create the init task, which finishes initialization.
     printk!("Taskes");
     sched::init(Continuation::new(|_| {
         printk!("Init task running!\n");
+
+        late_init();
+
+        ///////////////////////////////////////////////////////////////////////
+        // Init done!
+        //
+
+        // Run a test
         ContResult::Success(vec![(
             EventKind::Until(SysTime::now().after(4)),
             Continuation::new(|_| {
@@ -136,11 +116,19 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     }));
     printk!(" ✔\n");
 
-    // We can turn on interrupts now.
-    x86_64::instructions::interrupts::enable();
-
     // Start the first task
     sched::start();
 
     // We never return...
+}
+
+/// Initialization that happens after the first task is created.
+fn late_init() {
+    // Capabilities
+    printk!("Capabilities ...\n");
+    cap::init();
+    printk!("Capabilities ✔\n");
+
+    // We can turn on interrupts now.
+    x86_64::instructions::interrupts::enable();
 }
