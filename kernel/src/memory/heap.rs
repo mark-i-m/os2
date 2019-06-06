@@ -2,39 +2,40 @@
 //! smallheap.
 
 use core::alloc::{GlobalAlloc, Layout};
-use core::cell::RefCell;
 
 use smallheap::Allocator;
 
+use spin::Mutex;
+
 /// A wrapper around the heap allocator for use as the `global_allocator`.
 pub struct KernelAllocator {
-    heap: RefCell<Option<Allocator>>,
+    heap: Mutex<Option<Allocator>>,
 }
 
 impl KernelAllocator {
     pub const fn new() -> Self {
         KernelAllocator {
-            heap: RefCell::new(None),
+            heap: Mutex::new(None),
         }
     }
 
     pub fn set_heap(&mut self, heap: Allocator) {
-        *self.heap.borrow_mut() = Some(heap);
+        *self.heap.lock() = Some(heap);
     }
 
     pub unsafe fn extend(&mut self, start: *mut u8, size: usize) {
-        self.heap.borrow_mut().as_mut().unwrap().extend(start, size)
+        self.heap.lock().as_mut().unwrap().extend(start, size)
     }
 
     pub fn size(&self) -> usize {
-        self.heap.borrow().as_ref().unwrap().size()
+        self.heap.lock().as_ref().unwrap().size()
     }
 }
 
 unsafe impl GlobalAlloc for KernelAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         self.heap
-            .borrow_mut()
+            .lock()
             .as_mut()
             .unwrap()
             .malloc(layout.size(), layout.align())
@@ -44,7 +45,7 @@ unsafe impl GlobalAlloc for KernelAllocator {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         self.heap
-            .borrow_mut()
+            .lock()
             .as_mut()
             .unwrap()
             .free(ptr as *mut u8, layout.size())
