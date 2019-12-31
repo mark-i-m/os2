@@ -2,7 +2,7 @@
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use interrupts::PIT_HZ;
+use crate::interrupts::PIT_HZ;
 
 /// Counts interrupts. This can be used as a source of time.
 static TICKS: AtomicUsize = AtomicUsize::new(0);

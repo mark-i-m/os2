@@ -2,8 +2,7 @@
 
 use alloc::{boxed::Box, vec, vec::Vec};
 
-use sched;
-use time::SysTime;
+use crate::{sched, time::SysTime};
 
 /// Different kinds of events a continuation can wait for.
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
@@ -47,7 +46,7 @@ pub enum ContResult {
 
 /// Represents a single Task in the system
 pub struct Continuation {
-    routine: Option<Box<FnMut(Event) -> ContResult + Send>>,
+    routine: Option<Box<dyn FnMut(Event) -> ContResult + Send>>,
 }
 
 impl Continuation {

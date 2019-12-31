@@ -9,17 +9,11 @@
 )]
 // Compile without libstd
 #![no_std]
+#![no_main]
 #![crate_type = "staticlib"]
 #![crate_name = "kernel"]
 
 extern crate alloc;
-extern crate buddy;
-extern crate os_bootinfo;
-extern crate rand;
-extern crate rlibc;
-extern crate smallheap;
-extern crate spin;
-extern crate x86_64;
 
 #[macro_use]
 mod debug;
@@ -34,16 +28,20 @@ mod time;
 
 use alloc::vec;
 
-use continuation::{ContResult, Continuation, Event, EventKind};
-use time::SysTime;
+use bootloader::BootInfo;
+
+use crate::continuation::{ContResult, Continuation, Event, EventKind};
+use crate::time::SysTime;
 
 /// The kernel heap
 #[global_allocator]
 static mut ALLOCATOR: memory::KernelAllocator = memory::KernelAllocator::new();
 
+bootloader::entry_point!(kernel_main);
+
 /// This is the entry point to the kernel. It is the first rust code that runs.
 #[no_mangle]
-pub fn kernel_main() -> ! {
+fn kernel_main(boot_info: &'static BootInfo) -> ! {
     use crate::sched::user;
 
     // At this point we are still in the provisional environment with
@@ -60,8 +58,8 @@ pub fn kernel_main() -> ! {
     // Initialize memory
     // make the kernel heap 1MiB - 4KiB starting at 1MiB + 4KiB. This extra page will be unmapped
     // later to protect against heap overflows (unlikely as that is)...
-    printk!("Memory ...\n\t");
-    memory::init(unsafe { &mut ALLOCATOR });
+    printk!("Memory ...\n");
+    memory::init(unsafe { &mut ALLOCATOR }, boot_info);
     printk!("Memory ✔\n");
 
     // Set up interrupt/exception handling

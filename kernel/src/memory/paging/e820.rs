@@ -11,14 +11,6 @@ use x86_64::{
     PhysAddr,
 };
 
-extern "C" {
-    /// The number of entries in `memory_map`.
-    static memory_map_count: u32;
-
-    /// The E820 table in memory.
-    static memory_map: [MemoryRegion; 32];
-}
-
 /// The Region Type value for a usable region.
 const E820_MEMORY_USABLE: u32 = 1;
 

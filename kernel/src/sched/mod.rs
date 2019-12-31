@@ -8,9 +8,8 @@ use core::{borrow::Borrow, mem};
 
 use spin::Mutex;
 
-use time::SysTime;
-
-use continuation::{Continuation, Event, EventKind};
+use crate::continuation::{Continuation, Event, EventKind};
+use crate::time::SysTime;
 
 /// The size of a stack in words
 const STACK_WORDS: usize = 1 << 12; // 16KB

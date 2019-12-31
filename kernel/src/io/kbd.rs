@@ -47,7 +47,7 @@ unsafe fn read() -> Option<u8> {
     while KBD_CMD.read() & 1 == 0 {}
     let b: u8 = KBD_DATA.read();
     match b {
-        0x02...0x0a => Some(b'0' + b - 1),
+        0x02..=0x0a => Some(b'0' + b - 1),
         0x0b => Some(b'0'),
 
         0x10 => Some(ul(b'q')),

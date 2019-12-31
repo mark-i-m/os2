@@ -2,12 +2,12 @@
 
 use x86_64::{
     instructions::{interrupts, port::Port},
-    structures::idt::InterruptStackFrame,
+    structures::idt::{InterruptDescriptorTable, InterruptStackFrame},
 };
 
-use time; // the most epic import statement ever written!
+use crate::time;
 
-use super::idt64;
+//use super::idt64;
 
 /// Command port for PIC1
 const C1: Port<u8> = Port::new(0x20);
@@ -24,6 +24,35 @@ const D2: Port<u8> = Port::new(0xA1);
 /// The first entries of the IDT are reserved for traps and exceptions. So the first
 /// _interrupt_ is at vector 0x30.
 const FIRST_IDT: u8 = 0x30;
+
+/// Initialize some interrupt handlers
+pub fn init_irqs(idt: &mut InterruptDescriptorTable) {
+    // Reset the IDT (this sets a few critical bits, too)
+    //
+    // We need to be careful not to overflow the stack, though...
+    idt.reset();
+
+    // Set up basic interrupts
+    idt[FIRST_IDT as usize].set_handler_fn(irq_0);
+    idt[FIRST_IDT as usize + 0x1].set_handler_fn(irq_1);
+    idt[FIRST_IDT as usize + 0x2].set_handler_fn(irq_2);
+    idt[FIRST_IDT as usize + 0x3].set_handler_fn(irq_3);
+    idt[FIRST_IDT as usize + 0x4].set_handler_fn(irq_4);
+    idt[FIRST_IDT as usize + 0x5].set_handler_fn(irq_5);
+    idt[FIRST_IDT as usize + 0x6].set_handler_fn(irq_6);
+    idt[FIRST_IDT as usize + 0x7].set_handler_fn(irq_7);
+    idt[FIRST_IDT as usize + 0x8].set_handler_fn(irq_8);
+    idt[FIRST_IDT as usize + 0x9].set_handler_fn(irq_9);
+    idt[FIRST_IDT as usize + 0xa].set_handler_fn(irq_a);
+    idt[FIRST_IDT as usize + 0xb].set_handler_fn(irq_b);
+    idt[FIRST_IDT as usize + 0xc].set_handler_fn(irq_c);
+    idt[FIRST_IDT as usize + 0xd].set_handler_fn(irq_d);
+    idt[FIRST_IDT as usize + 0xe].set_handler_fn(irq_e);
+    idt[FIRST_IDT as usize + 0xf].set_handler_fn(irq_f);
+
+    // Good for debugging
+    idt.breakpoint.set_handler_fn(breakpoint_handler);
+}
 
 /// Initialize the PIC, but leave interrupts disabled
 pub fn init() {
@@ -49,35 +78,6 @@ pub fn init() {
         D1.write(0);
         D2.write(0);
     };
-
-    // Add some interrupt handlers
-    let idt_mut = unsafe { &mut idt64 };
-
-    // Reset the IDT (this sets a few critical bits, too)
-    //
-    // We need to be careful not to overflow the stack, though...
-    idt_mut.reset();
-
-    // Set up basic interrupts
-    idt_mut[FIRST_IDT as usize].set_handler_fn(irq_0);
-    idt_mut[FIRST_IDT as usize + 0x1].set_handler_fn(irq_1);
-    idt_mut[FIRST_IDT as usize + 0x2].set_handler_fn(irq_2);
-    idt_mut[FIRST_IDT as usize + 0x3].set_handler_fn(irq_3);
-    idt_mut[FIRST_IDT as usize + 0x4].set_handler_fn(irq_4);
-    idt_mut[FIRST_IDT as usize + 0x5].set_handler_fn(irq_5);
-    idt_mut[FIRST_IDT as usize + 0x6].set_handler_fn(irq_6);
-    idt_mut[FIRST_IDT as usize + 0x7].set_handler_fn(irq_7);
-    idt_mut[FIRST_IDT as usize + 0x8].set_handler_fn(irq_8);
-    idt_mut[FIRST_IDT as usize + 0x9].set_handler_fn(irq_9);
-    idt_mut[FIRST_IDT as usize + 0xa].set_handler_fn(irq_a);
-    idt_mut[FIRST_IDT as usize + 0xb].set_handler_fn(irq_b);
-    idt_mut[FIRST_IDT as usize + 0xc].set_handler_fn(irq_c);
-    idt_mut[FIRST_IDT as usize + 0xd].set_handler_fn(irq_d);
-    idt_mut[FIRST_IDT as usize + 0xe].set_handler_fn(irq_e);
-    idt_mut[FIRST_IDT as usize + 0xf].set_handler_fn(irq_f);
-
-    // Good for debugging
-    idt_mut.breakpoint.set_handler_fn(breakpoint_handler);
 }
 
 /// End of interrupt: send the next irq, but interrupts still disabled
