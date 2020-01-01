@@ -9,6 +9,17 @@ use crate::{
 
 const USER_STACK_SIZE: usize = 1; // pages
 
+// Some MSRs used for system call handling.
+
+/// Contains the stack and code segmets for syscall/sysret.
+const IA32_STAR: Msr = Msr::new(0xC000_0081);
+
+/// Contains the kernel rip for syscall handler.
+const IA32_LSTAR: Msr = Msr::new(0xC000_0082);
+
+/// Contains the kernel rflags mask for syscall.
+const IA32_FMASK: Msr = Msr::new(0xC000_0084);
+
 /// Allocates virtual address space, adds appropriate page table mappings, loads the specified code
 /// section into the allocated memory.
 ///
@@ -73,6 +84,15 @@ pub fn allocate_user_stack() -> ResourceHandle {
     user_stack
 }
 
+/// Set some MSRs, registers to enable syscalls and user/kernel context switching.
+pub fn init() {
+    todo!(
+        "Need to update some MSRs before sysret/syscall.
+        Need to set  IA32_EFER.SCE (0th bit)
+        See https://wiki.osdev.org/SYSRET#AMD:_SYSCALL.2FSYSRET"
+    );
+}
+
 /// Switch to user mode, executing the given code with the given address.
 pub fn switch_to_user(code: (ResourceHandle, usize), stack: ResourceHandle) -> ! {
     // Compute new register values
@@ -131,7 +151,7 @@ pub fn switch_to_user(code: (ResourceHandle, usize), stack: ResourceHandle) -> !
             "
             : /* no outputs */
             : "r"(rip), "r"(rflags), "r"(rsp)
-            : "rcx", "memory"
+            : "rcx", "r1", "memory"
             : "volatile"
         );
     }

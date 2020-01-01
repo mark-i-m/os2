@@ -4,7 +4,6 @@ use spin::Mutex;
 
 use x86_64::{
     instructions::{segmentation::set_cs, tables::load_tss},
-    registers::{model_specific::Msr, rflags::RFlags},
     structures::{
         gdt::{Descriptor, DescriptorFlags, GlobalDescriptorTable},
         idt::{InterruptDescriptorTable, InterruptStackFrame},
@@ -32,17 +31,6 @@ pub static IDT: Mutex<Option<InterruptDescriptorTable>> = Mutex::new(None);
 
 /// Global Descriptor Table.
 static GDT: Mutex<Option<GlobalDescriptorTable>> = Mutex::new(None);
-
-// Some MSRs used for system call handling.
-
-/// Contains the stack and code segmets for syscall/sysret.
-const IA32_STAR: Msr = Msr::new(0xC000_0081);
-
-/// Contains the kernel rip for syscall handler.
-const IA32_LSTAR: Msr = Msr::new(0xC000_0082);
-
-/// Contains the kernel rflags mask for syscall.
-const IA32_FMASK: Msr = Msr::new(0xC000_0084);
 
 /// Initialize interrupts (and exceptions).
 pub fn init() {

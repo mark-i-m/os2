@@ -32,6 +32,8 @@ use alloc::vec;
 
 use bootloader::BootInfo;
 
+use x86_64::registers::{model_specific::Msr, rflags::RFlags};
+
 use crate::continuation::{ContResult, Continuation, Event, EventKind};
 use crate::time::SysTime;
 
@@ -67,6 +69,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     // Set up interrupt/exception handling
     printk!("Interrupts...\n\t");
     interrupts::init();
+    sched::user::init();
     printk!("Interrupts ✔\n");
 
     // I/O
