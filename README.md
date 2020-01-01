@@ -9,15 +9,6 @@ this repo. Generally, `master` should compile and run.
 
 # WIP
 
-- Currently getting a double fault when using RNG.
-    - The `rand` RNGs are not optimized for use on small stacks. The kernel
-      stack is 2 pages (8KB), but the RNG we are using has multiple recursive
-      functions that allocate large structures on the stack. In our context,
-      this causes a stack overflow, which causes a double fault.
-    - Current solution is to defer init of RNG until we are running the init
-      task, which has a large stack. We will see if this solves it after I
-      solve the previous problem.
-
 - Userspace
     - Need to load the user code into the new virtual memory region.
         - Need some sort of ELF loader... `gz/rust-elfloader` looks promising.
