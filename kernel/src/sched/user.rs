@@ -1,9 +1,16 @@
-//! Switch to usermode
+//! System calls and kernel <-> user mode switching...
 
-use x86_64::{registers::rflags, structures::paging::PageTableFlags};
+use x86_64::{
+    registers::{
+        model_specific::{Efer, EferFlags, Msr},
+        rflags,
+    },
+    structures::paging::PageTableFlags,
+};
 
 use crate::{
     cap::ResourceHandle,
+    interrupts::SELECTORS,
     memory::{map_region, VirtualMemoryRegion},
 };
 
@@ -12,13 +19,13 @@ const USER_STACK_SIZE: usize = 1; // pages
 // Some MSRs used for system call handling.
 
 /// Contains the stack and code segmets for syscall/sysret.
-const IA32_STAR: Msr = Msr::new(0xC000_0081);
+const STAR: Msr = Msr::new(0xC000_0081);
 
 /// Contains the kernel rip for syscall handler.
-const IA32_LSTAR: Msr = Msr::new(0xC000_0082);
+const LSTAR: Msr = Msr::new(0xC000_0082);
 
 /// Contains the kernel rflags mask for syscall.
-const IA32_FMASK: Msr = Msr::new(0xC000_0084);
+const FMASK: Msr = Msr::new(0xC000_0084);
 
 /// Allocates virtual address space, adds appropriate page table mappings, loads the specified code
 /// section into the allocated memory.
@@ -86,11 +93,28 @@ pub fn allocate_user_stack() -> ResourceHandle {
 
 /// Set some MSRs, registers to enable syscalls and user/kernel context switching.
 pub fn init() {
-    todo!(
-        "Need to update some MSRs before sysret/syscall.
-        Need to set  IA32_EFER.SCE (0th bit)
-        See https://wiki.osdev.org/SYSRET#AMD:_SYSCALL.2FSYSRET"
-    );
+    unsafe {
+        // Need to set IA32_EFER.SCE
+        Efer::update(|flags| *flags |= EferFlags::SYSTEM_CALL_EXTENSIONS);
+
+        // STAR: Ring 0 and Ring 3 segments
+        // - Kernel mode CS is bits 47:32
+        // - Kernel mode SS is bits 47:32 + 8
+        // - User mode CS is bits 63:48 + 16
+        // - User mode SS is bits 63:48 + 8
+        let selectors = SELECTORS.lock();
+        let kernel_base: u16 = selectors.kernel_cs.index() * 8;
+        printk!("k {} u {}", kernel_base, selectors.user_ss.index());
+        let user_base: u16 = selectors.user_ss.index() * 8 - 8;
+        let star: u64 = ((kernel_base as u64) << 32) | ((user_base as u64) << 48);
+        STAR.write(star);
+
+        // LSTAR: Syscall Entry RIP
+        LSTAR.write(handle_syscall as u64);
+
+        // FMASK: rflags mask: any set bits are cleared on syscall
+        FMASK.write(0);
+    }
 }
 
 /// Switch to user mode, executing the given code with the given address.
@@ -143,6 +167,10 @@ pub fn switch_to_user(code: (ResourceHandle, usize), stack: ResourceHandle) -> !
             xor %r14, %r14
             xor %r15, %r15
 
+            # disable interrupts before loading the user stack; otherwise, an interrupt may be
+            # serviced on the wrong stack.
+            cli
+
             # no more stack refs until sysret
             mov $2, %rsp
 
@@ -157,4 +185,17 @@ pub fn switch_to_user(code: (ResourceHandle, usize), stack: ResourceHandle) -> !
     }
 
     unreachable!();
+}
+
+/// Handle a `syscall` instruction
+#[naked]
+extern "C" fn handle_syscall() {
+    // TODO: switch to kernel stack, save user regs
+    //
+    // https://software.intel.com/sites/default/files/managed/39/c5/325462-sdm-vol-1-2abcd-3abcd.pdf#G43.25974
+    //
+    // TODO: for syscall handling: see the warnings at the end of the above chapter in the Intel
+    // SDM (e.g. regarding interrupts, user stack)
+
+    todo!("syscall");
 }

@@ -5,11 +5,11 @@ use spin::Mutex;
 use x86_64::{
     instructions::{segmentation::set_cs, tables::load_tss},
     structures::{
-        gdt::{Descriptor, DescriptorFlags, GlobalDescriptorTable},
+        gdt::{Descriptor, DescriptorFlags, GlobalDescriptorTable, SegmentSelector},
         idt::{InterruptDescriptorTable, InterruptStackFrame},
         tss::TaskStateSegment,
     },
-    VirtAddr,
+    PrivilegeLevel, VirtAddr,
 };
 
 pub use self::pit::HZ as PIT_HZ;
@@ -18,10 +18,13 @@ mod pic;
 mod pit;
 
 /// The index in the TSS of the first Interrupt stack frame.
-const DOUBLE_FAULT_IST_INDEX: u16 = 0;
+const IST_FRAME_INDEX: u16 = 0;
 
 /// Number of bytes of the IST stack frame.
 const IST_FRAME_SIZE: usize = 4096;
+
+/// Global Descriptor Table.
+static GDT: Mutex<Option<GlobalDescriptorTable>> = Mutex::new(None);
 
 /// The Task State Segment.
 static TSS: Mutex<Option<TaskStateSegment>> = Mutex::new(None);
@@ -29,8 +32,21 @@ static TSS: Mutex<Option<TaskStateSegment>> = Mutex::new(None);
 /// Interrupt Descriptor Table.
 pub static IDT: Mutex<Option<InterruptDescriptorTable>> = Mutex::new(None);
 
-/// Global Descriptor Table.
-static GDT: Mutex<Option<GlobalDescriptorTable>> = Mutex::new(None);
+pub struct Selectors {
+    pub kernel_cs: SegmentSelector,
+    pub kernel_ss: SegmentSelector,
+    pub user_cs: SegmentSelector,
+    pub user_ss: SegmentSelector,
+    pub tss: SegmentSelector,
+}
+
+pub static SELECTORS: Mutex<Selectors> = Mutex::new(Selectors {
+    kernel_cs: SegmentSelector::new(0, PrivilegeLevel::Ring0),
+    kernel_ss: SegmentSelector::new(0, PrivilegeLevel::Ring0),
+    user_cs: SegmentSelector::new(0, PrivilegeLevel::Ring0),
+    user_ss: SegmentSelector::new(0, PrivilegeLevel::Ring0),
+    tss: SegmentSelector::new(0, PrivilegeLevel::Ring0),
+});
 
 /// Initialize interrupts (and exceptions).
 pub fn init() {
@@ -39,7 +55,7 @@ pub fn init() {
     let mut idt = InterruptDescriptorTable::new();
 
     // Create TSS (but don't load yet).
-    tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = {
+    tss.interrupt_stack_table[IST_FRAME_INDEX as usize] = {
         // We create a struct to force the alignment to 16.
         #[repr(align(16))]
         struct Stack {
@@ -63,27 +79,30 @@ pub fn init() {
     };
 
     // Initalize GDT
+    let mut selectors = SELECTORS.lock();
 
     // NOTE: kernel CS must be the one before kernel SS
-    let kernel_code_seg = gdt.add_entry(Descriptor::kernel_code_segment());
-    let _kernel_stack_seg = gdt.add_entry(Descriptor::kernel_code_segment()); // TODO
+    selectors.kernel_cs = gdt.add_entry(Descriptor::kernel_code_segment());
+    selectors.kernel_ss = gdt.add_entry(Descriptor::kernel_code_segment()); // TODO
 
     // NOTE: user SS must be the one before user CS
-    let user_stack_seg = gdt.add_entry(Descriptor::UserSegment(
-        (DescriptorFlags::USER_SEGMENT | DescriptorFlags::PRESENT | DescriptorFlags::LONG_MODE)
-            .bits()
-            | (3 << 45), // FIXME: the 3<<45 is the DPL (ring 3)
+    selectors.user_ss = gdt.add_entry(Descriptor::UserSegment(
+        (DescriptorFlags::USER_SEGMENT
+            | DescriptorFlags::PRESENT
+            | DescriptorFlags::LONG_MODE
+            | DescriptorFlags::DPL_RING_3)
+            .bits(),
     ));
-    let _user_code_seg = gdt.add_entry(Descriptor::UserSegment(
+    selectors.user_cs = gdt.add_entry(Descriptor::UserSegment(
         (DescriptorFlags::USER_SEGMENT
             | DescriptorFlags::PRESENT
             | DescriptorFlags::EXECUTABLE
-            | DescriptorFlags::LONG_MODE)
-            .bits()
-            | (3 << 45), // FIXME: the 3<<45 is the DPL (ring 3)
+            | DescriptorFlags::LONG_MODE
+            | DescriptorFlags::DPL_RING_3)
+            .bits(),
     ));
 
-    let tss_selector = gdt.add_entry(Descriptor::tss_segment(tss_ref));
+    selectors.tss = gdt.add_entry(Descriptor::tss_segment(tss_ref));
 
     *GDT.lock() = Some(gdt);
 
@@ -94,24 +113,31 @@ pub fn init() {
     };
     gdt_ref.load();
     unsafe {
-        set_cs(kernel_code_seg);
-        load_tss(tss_selector);
+        set_cs(selectors.kernel_cs);
+        load_tss(selectors.tss);
     }
 
     // Initialize the IDT
     pic::init_irqs(&mut idt);
     unsafe {
         crate::memory::init_pf_handler(&mut idt);
-        idt.general_protection_fault.set_handler_fn(handle_gpf);
 
         // Handle errors in weird states
+        idt.general_protection_fault
+            .set_handler_fn(handle_gpf)
+            .set_stack_index(IST_FRAME_INDEX);
+
         idt.double_fault
             .set_handler_fn(handle_double_fault)
-            .set_stack_index(DOUBLE_FAULT_IST_INDEX);
+            .set_stack_index(IST_FRAME_INDEX);
+
+        idt.non_maskable_interrupt
+            .set_handler_fn(handle_nmi)
+            .set_stack_index(IST_FRAME_INDEX);
 
         idt.invalid_opcode
             .set_handler_fn(handle_invalid_opcode)
-            .set_stack_index(DOUBLE_FAULT_IST_INDEX);
+            .set_stack_index(IST_FRAME_INDEX);
     }
 
     *IDT.lock() = Some(idt);
@@ -131,6 +157,21 @@ pub fn init() {
 
 /// Handle invalid opcode
 extern "x86-interrupt" fn handle_invalid_opcode(esf: &mut InterruptStackFrame) {
+    let opcode: u32 = unsafe { *esf.instruction_pointer.as_ptr() };
+
+    panic!(
+        "Invalid opcode
+            CS:RIP: *({:#x}:{:#x}) = {:#x}
+            flags: {:#b}",
+        esf.code_segment,
+        esf.instruction_pointer.as_u64(),
+        opcode,
+        esf.cpu_flags,
+    );
+}
+
+/// Handle NMI
+extern "x86-interrupt" fn handle_nmi(esf: &mut InterruptStackFrame) {
     let opcode: u32 = unsafe { *esf.instruction_pointer.as_ptr() };
 
     panic!(
@@ -170,17 +211,4 @@ extern "x86-interrupt" fn handle_double_fault(esf: &mut InterruptStackFrame, err
         esf.instruction_pointer.as_u64(),
         esf.cpu_flags
     );
-}
-
-/// Handle a `syscall` instruction
-#[naked]
-extern "C" fn handle_syscall() {
-    // TODO: switch to kernel stack, save user regs
-    //
-    // https://software.intel.com/sites/default/files/managed/39/c5/325462-sdm-vol-1-2abcd-3abcd.pdf#G43.25974
-    //
-    // TODO: for syscall handling: see the warnings at the end of the above chapter in the Intel
-    // SDM (e.g. regarding interrupts, user stack)
-
-    panic!("syscall",);
 }

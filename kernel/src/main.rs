@@ -32,8 +32,6 @@ use alloc::vec;
 
 use bootloader::BootInfo;
 
-use x86_64::registers::{model_specific::Msr, rflags::RFlags};
-
 use crate::continuation::{ContResult, Continuation, Event, EventKind};
 use crate::time::SysTime;
 
