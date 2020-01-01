@@ -9,6 +9,10 @@ this repo. Generally, `master` should compile and run.
 
 # WIP
 
+- System calls
+    - For some reason the `sysret` instruction is triggering `invalid opcode` exception...
+    - Probably need to go read the Intel manual and see if I missed anything :(
+
 - Userspace
     - Need to load the user code into the new virtual memory region.
         - Need some sort of ELF loader... `gz/rust-elfloader` looks promising.
