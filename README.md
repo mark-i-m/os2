@@ -9,13 +9,6 @@ this repo. Generally, `master` should compile and run.
 
 # WIP
 
-- I need to leave wholes in the kernel binary for unusable memory regions.
-  Currently, I am getting a deadlock because the binary overlaps the video
-  memory at 0xA0000.
-  - See `https://wiki.osdev.org/Memory_Map_(x86)`
-  - While I'm at it, I should fix the other holes too. No wonder Linux uses a
-    higher-half kernel :(
-
 - Currently getting a double fault when using RNG.
     - The `rand` RNGs are not optimized for use on small stacks. The kernel
       stack is 2 pages (8KB), but the RNG we are using has multiple recursive
@@ -100,5 +93,5 @@ dependencies). Not bad!
 To build and run
 ```console
 $ cd os2/kernel
-$ bootimage run
+$ bootimage run # --release for optimized build
 ```

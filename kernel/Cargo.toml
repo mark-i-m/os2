@@ -16,4 +16,4 @@ bootloader = { version = "0.8.3", features = ["recursive_page_table"]}
 
 [package.metadata.bootimage]
 default-target = "x86_64-unknown-elf.json"
-run-command = ["qemu-system-x86_64", "-m", "1G", "--serial", "mon:stdio", "-drive", "format=raw,file={}", "-nographic"]
+run-command = ["qemu-system-x86_64", "-m", "1G", "--serial", "mon:stdio", "-drive", "format=raw,file={}" ]
