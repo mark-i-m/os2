@@ -75,7 +75,7 @@ dependencies). Not bad!
   rustc 1.36.0-nightly (cfdc84a00 2019-05-07)
   ```
 
-- `cargo xbuild` via `cargo install cargo-xbuild`
+- `cargo xbuild` and `cargo bootimage` via `cargo install cargo-xbuild bootimage`
 
 - `build-essentials` and standard utils: `gcc`, `make`, `ld`, `objcopy`, `dd`
 
@@ -83,6 +83,6 @@ dependencies). Not bad!
 
 To build and run
 ```console
-$ cd os2
-$ make runtext
+$ cd os2/kernel
+$ bootimage run
 ```
