@@ -114,10 +114,16 @@ pub fn init() {
     pic::init_irqs(&mut idt);
     unsafe {
         crate::memory::init_pf_handler(&mut idt);
+        idt.general_protection_fault.set_handler_fn(handle_gpf);
+
+        // Handle errors in weird states
         idt.double_fault
             .set_handler_fn(handle_double_fault)
             .set_stack_index(DOUBLE_FAULT_IST_INDEX);
-        idt.general_protection_fault.set_handler_fn(handle_gpf);
+
+        idt.invalid_opcode
+            .set_handler_fn(handle_invalid_opcode)
+            .set_stack_index(DOUBLE_FAULT_IST_INDEX);
     }
 
     *IDT.lock() = Some(idt);
@@ -133,6 +139,21 @@ pub fn init() {
 
     // Initialize the Programmable Interrupt Timer
     pit::init();
+}
+
+/// Handle invalid opcode
+extern "x86-interrupt" fn handle_invalid_opcode(esf: &mut InterruptStackFrame) {
+    let opcode: u32 = unsafe { *esf.instruction_pointer.as_ptr() };
+
+    panic!(
+        "Invalid opcode
+            CS:RIP: *({:#x}:{:#x}) = {:#x}
+            flags: {:#b}",
+        esf.code_segment,
+        esf.instruction_pointer.as_u64(),
+        opcode,
+        esf.cpu_flags,
+    );
 }
 
 /// Handle a GPF fault
