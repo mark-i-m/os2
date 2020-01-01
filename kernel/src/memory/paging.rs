@@ -25,8 +25,8 @@ use x86_64::{
     structures::{
         idt::{InterruptStackFrame, PageFaultErrorCode},
         paging::{
-            Mapper, Page, PageSize, PageTable, PageTableFlags, PhysFrame, RecursivePageTable,
-            Size2MiB, Size4KiB, UnusedPhysFrame,
+            FrameAllocator, Mapper, Page, PageSize, PageTable, PageTableFlags, PhysFrame,
+            RecursivePageTable, Size2MiB, Size4KiB, UnusedPhysFrame,
         },
     },
     PhysAddr, VirtAddr,
@@ -370,15 +370,30 @@ pub extern "x86-interrupt" fn handle_page_fault(
     // Check if the page is allowed. We need to check if any range contains the fault address.
     if let Some((start, (len, flags))) = ALLOWED.lock().as_ref().unwrap().range(0..=cr2).next_back()
     {
-        // TODO: map the correct region
-        panic!(
-            "Page fault at ip {:x}, addr {:x}. Found region start: {}, len: {}, flags: {:?}",
+        printk!(
+            "Page fault at ip {:x}, addr {:x}. Found region start: {:x}, len: {}, flags: {:?}\n",
             esf.instruction_pointer.as_u64(),
             cr2,
             start,
             len,
             flags
         );
+
+        // Map the correct region
+        let page: Page<Size4KiB> =
+            Page::from_start_address(VirtAddr::new(*start as u64)).expect("Region is unaligned");
+        let frame = PHYS_MEM_ALLOC
+            .lock()
+            .as_mut()
+            .unwrap()
+            .allocate_frame()
+            .expect("Unable to allocate physical memory");
+        PAGE_TABLES
+            .lock()
+            .as_mut()
+            .unwrap()
+            .map_to(page, frame, *flags, PHYS_MEM_ALLOC.lock().as_mut().unwrap())
+            .expect("Unable to map page");
     } else {
         panic!(
             "Segfault at ip {:x}, addr {:x}",

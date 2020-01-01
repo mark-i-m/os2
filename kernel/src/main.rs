@@ -102,7 +102,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                         ContResult::Success(vec![(
                             EventKind::Now,
                             Continuation::new(|_| {
-                                printk!("Attempting to switch to user!");
+                                printk!("Attempting to switch to user!\n");
 
                                 let code = user::load_user_code_section();
                                 let stack = user::allocate_user_stack();
