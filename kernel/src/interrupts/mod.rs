@@ -113,11 +113,11 @@ pub fn init() {
     // Initialize the IDT
     pic::init_irqs(&mut idt);
     unsafe {
+        crate::memory::init_pf_handler(&mut idt);
         idt.double_fault
             .set_handler_fn(handle_double_fault)
             .set_stack_index(DOUBLE_FAULT_IST_INDEX);
         idt.general_protection_fault.set_handler_fn(handle_gpf);
-        crate::memory::init_pf_handler(&mut idt);
     }
 
     *IDT.lock() = Some(idt);

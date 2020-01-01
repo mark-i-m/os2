@@ -20,10 +20,7 @@ pub fn load_user_code_section() -> (ResourceHandle, usize) {
     // Map the code section.
     map_region(
         user_code_section,
-        PageTableFlags::PRESENT
-            | PageTableFlags::WRITABLE
-            | PageTableFlags::USER_ACCESSIBLE
-            | PageTableFlags::NO_EXECUTE,
+        PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE,
     );
 
     // TODO: load the code
