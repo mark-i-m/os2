@@ -175,7 +175,7 @@ pub fn switch_to_user(code: (ResourceHandle, usize), stack: ResourceHandle) -> !
             mov $2, %rsp
 
             # return to usermode (ring 3)
-            sysret
+            sysretq
             "
             : /* no outputs */
             : "r"(rip), "r"(rflags), "r"(rsp)
