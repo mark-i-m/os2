@@ -10,7 +10,6 @@ pub enum EventKind {
     /// Wait for "now" to occur. i.e. don't wait for anything.
     Now,
 
-    // TODO: implement this
     /// Wait for keyboard input.
     Keyboard,
 
