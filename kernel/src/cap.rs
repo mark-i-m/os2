@@ -49,8 +49,6 @@ static CAPABILITY_RNG: Mutex<Option<Box<StdRng>>> = Mutex::new(None);
 /// Init the capability system.
 pub fn init() {
     *CAPABILITY_REGISTRY.lock() = Some(BTreeMap::new());
-
-    // TODO: this causes a stack overflow :(
     *CAPABILITY_RNG.lock() = Some(box StdRng::seed_from_u64(0));
 }
 

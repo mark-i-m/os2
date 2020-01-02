@@ -162,8 +162,7 @@ pub fn start_user_task(code: (ResourceHandle, usize), stack: ResourceHandle) -> 
     let (_handle, rip) = code;
 
     // Enable interrupts for user mode.
-    //let rflags = (rflags::read() | rflags::RFlags::INTERRUPT_FLAG).bits(); // TODO: uncomment
-    let rflags = rflags::read().bits();
+    let rflags = (rflags::read() | rflags::RFlags::INTERRUPT_FLAG).bits();
 
     let registers = SavedRegs {
         rip: rip as u64,
