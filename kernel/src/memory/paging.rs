@@ -407,38 +407,48 @@ pub extern "x86-interrupt" fn handle_page_fault(
         };
     }
 
-    // Check if the page is allowed. We need to check if any range contains the fault address.
-    if let Some((start, (len, flags))) = ALLOWED.lock().as_ref().unwrap().range(0..=cr2).next_back()
-    {
-        printk!(
-            "Page fault at ip {:x}, addr {:x}. Found region start: {:x}, len: {}, flags: {:?}\n",
-            esf.instruction_pointer.as_u64(),
-            cr2,
-            start,
-            len,
-            flags
-        );
+    // Check if the page is allowed. We need to check if any range contains the fault address. Such
+    // a range would be the last (and only) range to possibly contain this range -- that is, we
+    // need to find the last region before cr2. Then, we need to check that cr2 is within that
+    // region.
+    match ALLOWED.lock().as_ref().unwrap().range(0..=cr2).next_back() {
+        // Demand paging
+        Some((&start, (len, flags))) if cr2 >= start && cr2 < start + len => {
+            printk!(
+                "Page fault at ip {:x}, addr {:x}. Found region start: {:x}, len: {}, flags: {:?}\n",
+                esf.instruction_pointer.as_u64(),
+                cr2,
+                start,
+                len,
+                flags
+            );
 
-        // Map the correct region
-        let page: Page<Size4KiB> =
-            Page::from_start_address(VirtAddr::new(*start as u64)).expect("Region is unaligned");
-        let frame = PHYS_MEM_ALLOC
-            .lock()
-            .as_mut()
-            .unwrap()
-            .allocate_frame()
-            .expect("Unable to allocate physical memory");
-        PAGE_TABLES
-            .lock()
-            .as_mut()
-            .unwrap()
-            .map_to(page, frame, *flags, PHYS_MEM_ALLOC.lock().as_mut().unwrap())
-            .expect("Unable to map page");
-    } else {
-        panic!(
-            "Segfault at ip {:x}, addr {:x}",
-            esf.instruction_pointer.as_u64(),
-            cr2,
-        );
+            // Map the correct region
+            let page: Page<Size4KiB> =
+                Page::from_start_address(VirtAddr::new(start)).expect("Region is unaligned");
+            let frame = PHYS_MEM_ALLOC
+                .lock()
+                .as_mut()
+                .unwrap()
+                .allocate_frame()
+                .expect("Unable to allocate physical memory");
+            PAGE_TABLES
+                .lock()
+                .as_mut()
+                .unwrap()
+                .map_to(page, frame, *flags, PHYS_MEM_ALLOC.lock().as_mut().unwrap())
+                .expect("Unable to map page");
+
+            printk!("Done with page fault.\n");
+        }
+
+        // Segfault
+        _ => {
+            panic!(
+                "Segfault at ip {:x}, addr {:x}",
+                esf.instruction_pointer.as_u64(),
+                cr2,
+            );
+        }
     }
 }
