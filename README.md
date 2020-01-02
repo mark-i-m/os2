@@ -10,15 +10,10 @@ this repo. Generally, `master` should compile and run.
 # WIP
 
 - Userspace
-    - Systems calls mostly working but there is a deadlock somewhere...
     - Need to load the user code into the new virtual memory region.
         - Need some sort of ELF loader... `gz/rust-elfloader` looks promising.
         - Will probably just hard-code binary into an array with initially... I
           don't really want to implement a file system.
-    - Need to impl system calls (probably very minimal, but needed so that the
-      user program can at least exit).
-
-    - DONE: Able to switch to userspace, handle interrupts/traps/syscalls from userspace.
 
 - Paging
     - `memory::paging::map_region`
@@ -54,10 +49,17 @@ dependencies). Not bad!
 - Simple capability system for managing access to resources in the system, such
   as memory regions.
 
+- Switching to usermode and back.
+
+- System calls via `syscall` and `sysret` instructions.
+
 # TODO
 
 - Execute position-indep binaries in usermode. All executables need to be
   position-independent.
+
+- System calls for usermode continuations to indicate their termination and
+  schedule the next continuation, possibly pending an event.
 
 - Zero-copy message passing for IPC. To send a message,
     - Remove from sender page tables
@@ -74,7 +76,7 @@ dependencies). Not bad!
 - rust, nightly
 
   ```txt
-  rustc 1.36.0-nightly (cfdc84a00 2019-05-07)
+  rustc 1.42.0-nightly (0de96d37f 2019-12-19)
   ```
 
 - `llvm-tools-preview` rust distribution component via `rustup component add llvm-tools-preview`
