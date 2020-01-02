@@ -197,9 +197,8 @@ fn init_early_paging(boot_info: &'static BootInfo) {
     // Recursive tables are setup by bootloader.
     let boot_pt = unsafe { &mut *(boot_info.recursive_page_table_addr as *mut PageTable) };
     let mut page_tables = PAGE_TABLES.lock();
-    *page_tables = Some(unsafe {
-        RecursivePageTable::new(boot_pt).expect("Recursive page table init failed.")
-    });
+    *page_tables =
+        Some(RecursivePageTable::new(boot_pt).expect("Recursive page table init failed."));
 
     let mut pmem_alloc = PHYS_MEM_ALLOC.lock();
 
@@ -224,14 +223,15 @@ fn init_early_paging(boot_info: &'static BootInfo) {
                 .unwrap()
                 .map_to(
                     page,
-                    unsafe { UnusedPhysFrame::new(frame) },
+                    UnusedPhysFrame::new(frame),
                     PageTableFlags::PRESENT
                         | PageTableFlags::WRITABLE
                         | PageTableFlags::GLOBAL
                         | PageTableFlags::NO_EXECUTE,
                     pmem_alloc.as_mut().unwrap(),
                 )
-                .expect("Unable to map");
+                .expect("Unable to map")
+                .flush();
         }
     }
 
@@ -437,7 +437,8 @@ pub extern "x86-interrupt" fn handle_page_fault(
                 .as_mut()
                 .unwrap()
                 .map_to(page, frame, *flags, PHYS_MEM_ALLOC.lock().as_mut().unwrap())
-                .expect("Unable to map page");
+                .expect("Unable to map page")
+                .flush();
 
             printk!("\tDone with page fault.\n");
         }
