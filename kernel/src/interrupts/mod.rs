@@ -17,17 +17,21 @@ pub use self::pit::HZ as PIT_HZ;
 mod pic;
 mod pit;
 
-/// The index in the TSS of the first Interrupt stack frame.
-const IST_FRAME_INDEX: u16 = 0;
-
 /// Number of bytes of the IST stack frame.
 const IST_FRAME_SIZE: usize = 4096;
+
+/// The index in the TSS of the first Interrupt stack frame, used for fault handlers in emergency
+/// (e.g. double faults).
+const EMERGENCY_IST_FRAME_INDEX: u16 = 0;
+
+/// The index in the TSS of the Interrupt stack frame where the kernel stack pointer is saved.
+pub const SAVED_KERNEL_RSP_IST_FRAME_INDEX: u16 = EMERGENCY_IST_FRAME_INDEX + 1;
 
 /// Global Descriptor Table.
 static GDT: Mutex<Option<GlobalDescriptorTable>> = Mutex::new(None);
 
 /// The Task State Segment.
-static TSS: Mutex<Option<TaskStateSegment>> = Mutex::new(None);
+pub static TSS: Mutex<Option<TaskStateSegment>> = Mutex::new(None);
 
 /// Interrupt Descriptor Table.
 pub static IDT: Mutex<Option<InterruptDescriptorTable>> = Mutex::new(None);
@@ -56,7 +60,7 @@ pub fn init() {
     let mut idt = InterruptDescriptorTable::new();
 
     // Create TSS (but don't load yet).
-    tss.interrupt_stack_table[IST_FRAME_INDEX as usize] = {
+    tss.interrupt_stack_table[EMERGENCY_IST_FRAME_INDEX as usize] = {
         // We create a struct to force the alignment to 16.
         #[repr(align(16))]
         struct Stack {
@@ -71,6 +75,11 @@ pub fn init() {
         printk!("double fault stack @ {:?}, {:?}\n", stack_start, stack_end);
         stack_end
     };
+
+    // Initially we will make the saved stack the emergency frame. We shouldn't be taking many page
+    // faults or interrupt early on anyway.
+    tss.interrupt_stack_table[SAVED_KERNEL_RSP_IST_FRAME_INDEX as usize] =
+        tss.interrupt_stack_table[EMERGENCY_IST_FRAME_INDEX as usize];
 
     *TSS.lock() = Some(tss);
 
@@ -120,26 +129,33 @@ pub fn init() {
     }
 
     // Initialize the IDT
-    pic::init_irqs(&mut idt);
+
+    // Reset the IDT (this sets a few critical bits, too)
+    //
+    // We need to be careful not to overflow the stack, though...
+    idt.reset();
+
     unsafe {
+        pic::init_irqs(&mut idt);
+
         crate::memory::init_pf_handler(&mut idt);
 
         // Handle errors in weird states
         idt.general_protection_fault
             .set_handler_fn(handle_gpf)
-            .set_stack_index(IST_FRAME_INDEX);
+            .set_stack_index(EMERGENCY_IST_FRAME_INDEX);
 
         idt.double_fault
             .set_handler_fn(handle_double_fault)
-            .set_stack_index(IST_FRAME_INDEX);
+            .set_stack_index(EMERGENCY_IST_FRAME_INDEX);
 
         idt.non_maskable_interrupt
             .set_handler_fn(handle_nmi)
-            .set_stack_index(IST_FRAME_INDEX);
+            .set_stack_index(EMERGENCY_IST_FRAME_INDEX);
 
         idt.invalid_opcode
             .set_handler_fn(handle_invalid_opcode)
-            .set_stack_index(IST_FRAME_INDEX);
+            .set_stack_index(EMERGENCY_IST_FRAME_INDEX);
     }
 
     *IDT.lock() = Some(idt);

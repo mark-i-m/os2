@@ -6,11 +6,12 @@ use x86_64::{
         rflags,
     },
     structures::paging::PageTableFlags,
+    VirtAddr,
 };
 
 use crate::{
     cap::ResourceHandle,
-    interrupts::SELECTORS,
+    interrupts::{SAVED_KERNEL_RSP_IST_FRAME_INDEX, SELECTORS, TSS},
     memory::{map_region, VirtualMemoryRegion},
 };
 
@@ -131,20 +132,31 @@ pub fn switch_to_user(code: (ResourceHandle, usize), stack: ResourceHandle) -> !
 
     let (_handle, rip) = code;
 
-    //let rflags = (rflags::read() | rflags::RFlags::INTERRUPT_FLAG).bits(); // TODO uncomment
-    let rflags = (rflags::read()).bits();
+    // Enable interrupts for user mode.
+    let rflags = (rflags::read() | rflags::RFlags::INTERRUPT_FLAG).bits();
 
     printk!(
-        "Switching to user mode with rip={:x} rsp={:x} rflags={:b} STAR={:x}\n",
+        "Switching to user mode with rip={:x} rsp={:x} rflags={:b}\n",
         rip as u64,
         rsp as u64,
         rflags as u64,
-        unsafe { STAR.read() },
     );
 
-    // TODO: save kernel stack location somewhere so that we can switch back to it during an
-    // interrupt. Or do we need to? The scheduler already knows where its two stacks are... can we
-    // just wipe one of them and use it?
+    // Save kernel stack location somewhere so that we can switch back to it during an interrupt.
+    let mut kernel_rsp: u64;
+    unsafe {
+        asm!("
+            mov %rsp, $0
+            "
+            : "=r"(kernel_rsp)
+            : /* no inputs */
+            : /* no clobbers */
+            : "volatile"
+        );
+    }
+
+    TSS.lock().as_mut().unwrap().interrupt_stack_table[SAVED_KERNEL_RSP_IST_FRAME_INDEX as usize] =
+        VirtAddr::new(kernel_rsp);
 
     // https://software.intel.com/sites/default/files/managed/39/c5/325462-sdm-vol-1-2abcd-3abcd.pdf#G43.25974
     //
@@ -160,12 +172,7 @@ pub fn switch_to_user(code: (ResourceHandle, usize), stack: ResourceHandle) -> !
     unsafe {
         asm!(
             "
-            # needed for sysret
-            mov $0, %rcx
-            mov $1, %r11
-
             # clear other regs
-            xor %rax, %rax
             xor %rbx, %rbx
             xor %rdx, %rdx
             xor %rdi, %rdi
@@ -183,14 +190,18 @@ pub fn switch_to_user(code: (ResourceHandle, usize), stack: ResourceHandle) -> !
             cli
 
             # no more stack refs until sysret
-            mov $2, %rsp
+            mov %rax, %rsp
+
+            # clear rax for simpler debugging
+            xor %rax, %rax
 
             # return to usermode (ring 3)
             sysretq
             "
             : /* no outputs */
-            : "r"(rip), "r"(rflags), "r"(rsp)
-            : "rcx", "r1", "memory"
+            : "{rcx}"(rip), "{r11}"(rflags), "{rax}"(rsp)
+            : "memory", "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12",
+              "r13", "r14", "r15"
             : "volatile"
         );
     }
