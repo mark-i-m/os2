@@ -47,7 +47,11 @@ pub fn load_user_code_section() -> (ResourceHandle, usize) {
     // TODO: this is test code that is an infinite loop followed by nops
     let start_addr = user_code_section.with(|cap| {
         const TEST_CODE: &[u8] = &[
-            0xEB, 0xFE, // here: jmp here
+            // here:
+            0x54, // push %rsp
+            0x58, // pop %rax
+            0x0f, 0x05, // syscall
+            0xeb, 0xfa, // jmp here
             0x90, // nop
             0x90, // nop
             0x90, // nop
