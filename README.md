@@ -10,6 +10,7 @@ this repo. Generally, `master` should compile and run.
 # WIP
 
 - Userspace
+    - Systems calls mostly working but there is a deadlock somewhere...
     - Need to load the user code into the new virtual memory region.
         - Need some sort of ELF loader... `gz/rust-elfloader` looks promising.
         - Will probably just hard-code binary into an array with initially... I
@@ -17,7 +18,7 @@ this repo. Generally, `master` should compile and run.
     - Need to impl system calls (probably very minimal, but needed so that the
       user program can at least exit).
 
-    - DONE: Able to switch to userspace, handle interrupts/traps from userspace.
+    - DONE: Able to switch to userspace, handle interrupts/traps/syscalls from userspace.
 
 - Paging
     - `memory::paging::map_region`

@@ -86,6 +86,18 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         // Init done!
         //
 
+        ContResult::Success(vec![(
+            EventKind::Now,
+            Continuation::new(|_| {
+                printk!("Attempting to switch to user!\n");
+
+                let code = user::load_user_code_section();
+                let stack = user::allocate_user_stack();
+                user::start_user_task(code, stack);
+            }),
+        )])
+
+        /* TODO uncomment
         // Run a test
         ContResult::Success(vec![(
             EventKind::Until(SysTime::now().after(4)),
@@ -114,6 +126,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                 )])
             }),
         )])
+                            */
     }));
 
     printk!(" ✔\n");
@@ -132,5 +145,5 @@ fn late_init() {
     printk!("Capabilities ✔\n");
 
     // We can turn on interrupts now.
-    x86_64::instructions::interrupts::enable();
+    //x86_64::instructions::interrupts::enable(); // TODO uncomment
 }
