@@ -236,8 +236,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "x86_64"
 version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86a1df3e8501bb16db6e5846cab8f3684a0ca48c4c0d635b35a9282af4bd642e"
+source = "git+https://github.com/mark-i-m/x86_64?branch=fix-flags#1e80bd9bdb030649f3d26830bd85230fd3f36f6f"
 dependencies = [
  "array-init",
  "bit_field",
