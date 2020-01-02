@@ -90,6 +90,7 @@ pub fn init() {
     selectors.user_ss = gdt.add_entry(Descriptor::UserSegment(
         (DescriptorFlags::USER_SEGMENT
             | DescriptorFlags::PRESENT
+            | DescriptorFlags::WRITABLE
             | DescriptorFlags::LONG_MODE
             | DescriptorFlags::DPL_RING_3)
             .bits(),
