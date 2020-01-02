@@ -178,10 +178,6 @@ pub fn start_user_task(code: (ResourceHandle, usize), stack: ResourceHandle) -> 
 mod syscall {
     //! System call handling.
 
-    use x86_64::VirtAddr;
-
-    use crate::interrupts::{SAVED_KERNEL_RSP_IST_FRAME_INDEX, TSS};
-
     use super::SavedRegs;
 
     /// We use this structure as our tmp stack. Recall that the stack grows down.
@@ -281,14 +277,10 @@ mod syscall {
     /// assumes we are still running on the tmp stack. It switches to the saved kernel stack.
     unsafe fn handle_syscall(tmp_stack: &'static TmpStack) {
         // Switch to the real kernel stack
-        let kernel_rsp = TSS.lock().as_ref().unwrap().interrupt_stack_table
-            [SAVED_KERNEL_RSP_IST_FRAME_INDEX as usize]
-            .as_u64();
-
         asm!(
-            ""
+            "mov $0, %rsp"
             : /* no outputs */
-            : "{rsp}"(kernel_rsp) // mov kernel_rsp, %rsp
+            : "m"(super::super::CURRENT_STACK_HEAD)
             : "memory", "rsp"
             : "volatile"
         );
@@ -305,22 +297,6 @@ mod syscall {
 
     /// Switch to user mode with the given registers.
     pub(super) fn switch_to_user(registers: &SavedRegs) -> ! {
-        // Save kernel stack location somewhere so that we can switch back to it during an interrupt.
-        let mut kernel_rsp: u64;
-        unsafe {
-            asm!("
-            mov %rsp, $0
-            "
-                : "=r"(kernel_rsp)
-                : /* no inputs */
-                : /* no clobbers */
-                : "volatile"
-            );
-        }
-
-        TSS.lock().as_mut().unwrap().interrupt_stack_table
-            [SAVED_KERNEL_RSP_IST_FRAME_INDEX as usize] = VirtAddr::new(kernel_rsp);
-
         // https://software.intel.com/sites/default/files/managed/39/c5/325462-sdm-vol-1-2abcd-3abcd.pdf#G43.25974
         //
         // Set the following and execute the `sysret` instruction:

@@ -4,7 +4,7 @@ use bootloader::BootInfo;
 
 use x86_64::structures::idt::InterruptDescriptorTable;
 
-use crate::interrupts::SAVED_KERNEL_RSP_IST_FRAME_INDEX;
+use crate::interrupts::IRQ_IST_FRAME_INDEX;
 
 pub use self::heap::KernelAllocator;
 pub use self::paging::{map_region, VirtualMemoryRegion};
@@ -35,5 +35,5 @@ pub fn init(allocator: &mut KernelAllocator, boot_info: &'static BootInfo) {
 pub unsafe fn init_pf_handler(idt: &mut InterruptDescriptorTable) {
     idt.page_fault
         .set_handler_fn(crate::memory::paging::handle_page_fault)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
 }

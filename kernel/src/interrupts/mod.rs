@@ -22,10 +22,12 @@ const IST_FRAME_SIZE: usize = 4096;
 
 /// The index in the TSS of the first Interrupt stack frame, used for fault handlers in emergency
 /// (e.g. double faults).
-const EMERGENCY_IST_FRAME_INDEX: u16 = 0;
+pub const EMERGENCY_IST_FRAME_INDEX: u16 = 0;
 
-/// The index in the TSS of the Interrupt stack frame where the kernel stack pointer is saved.
-pub const SAVED_KERNEL_RSP_IST_FRAME_INDEX: u16 = EMERGENCY_IST_FRAME_INDEX + 1;
+/// The index in the TSS of the Interrupt stack frame where the interrupts, page faults, etc are
+/// handled. Note that system calls are not handled on this stack frame. They use the main kernel
+/// stacks in the scheduler.
+pub const IRQ_IST_FRAME_INDEX: u16 = EMERGENCY_IST_FRAME_INDEX + 1;
 
 /// Global Descriptor Table.
 static GDT: Mutex<Option<GlobalDescriptorTable>> = Mutex::new(None);
@@ -76,10 +78,21 @@ pub fn init() {
         stack_end
     };
 
-    // Initially we will make the saved stack the emergency frame. We shouldn't be taking many page
-    // faults or interrupt early on anyway.
-    tss.interrupt_stack_table[SAVED_KERNEL_RSP_IST_FRAME_INDEX as usize] =
-        tss.interrupt_stack_table[EMERGENCY_IST_FRAME_INDEX as usize];
+    tss.interrupt_stack_table[IRQ_IST_FRAME_INDEX as usize] = {
+        // We create a struct to force the alignment to 16.
+        #[repr(align(16))]
+        struct Stack {
+            _data: [u8; IST_FRAME_SIZE],
+        }
+
+        let stack = box Stack {
+            _data: [0; IST_FRAME_SIZE],
+        };
+        let stack_start = VirtAddr::from_ptr(&stack);
+        let stack_end = stack_start + IST_FRAME_SIZE;
+        printk!("irq stack @ {:?}, {:?}\n", stack_start, stack_end);
+        stack_end
+    };
 
     *TSS.lock() = Some(tss);
 
@@ -93,7 +106,7 @@ pub fn init() {
 
     // NOTE: kernel CS must be the one before kernel SS
     selectors.kernel_cs = gdt.add_entry(Descriptor::kernel_code_segment());
-    selectors.kernel_ss = gdt.add_entry(Descriptor::kernel_code_segment()); // TODO
+    selectors.kernel_ss = gdt.add_entry(Descriptor::kernel_code_segment());
 
     // NOTE: user SS must be the one before user CS
     selectors.user_ss = gdt.add_entry(Descriptor::UserSegment(

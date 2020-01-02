@@ -7,7 +7,7 @@ use x86_64::{
 
 use crate::time;
 
-use super::SAVED_KERNEL_RSP_IST_FRAME_INDEX;
+use super::IRQ_IST_FRAME_INDEX;
 
 //use super::idt64;
 
@@ -32,57 +32,57 @@ pub unsafe fn init_irqs(idt: &mut InterruptDescriptorTable) {
     // Set up basic interrupts
     idt[FIRST_IDT as usize]
         .set_handler_fn(irq_0)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0x1]
         .set_handler_fn(irq_1)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0x2]
         .set_handler_fn(irq_2)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0x3]
         .set_handler_fn(irq_3)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0x4]
         .set_handler_fn(irq_4)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0x5]
         .set_handler_fn(irq_5)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0x6]
         .set_handler_fn(irq_6)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0x7]
         .set_handler_fn(irq_7)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0x8]
         .set_handler_fn(irq_8)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0x9]
         .set_handler_fn(irq_9)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0xa]
         .set_handler_fn(irq_a)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0xb]
         .set_handler_fn(irq_b)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0xc]
         .set_handler_fn(irq_c)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0xd]
         .set_handler_fn(irq_d)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0xe]
         .set_handler_fn(irq_e)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
     idt[FIRST_IDT as usize + 0xf]
         .set_handler_fn(irq_f)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
 
     // Good for debugging
     idt.breakpoint
         .set_handler_fn(breakpoint_handler)
-        .set_stack_index(SAVED_KERNEL_RSP_IST_FRAME_INDEX);
+        .set_stack_index(IRQ_IST_FRAME_INDEX);
 }
 
 /// Initialize the PIC, but leave interrupts disabled

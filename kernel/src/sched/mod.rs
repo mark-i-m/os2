@@ -17,6 +17,12 @@ const STACK_WORDS: usize = 1 << 12; // 16KB
 /// The kernel task scheduler instance
 static SCHEDULER: Mutex<Option<Scheduler>> = Mutex::new(None);
 
+/// The head of the current stack
+// TODO: maybe there is some race condition here? not really sure... I think the scheduler and the
+// syscall handler are the only ones using this, and by construction at most one of them can be
+// running at a time...
+static mut CURRENT_STACK_HEAD: u64 = 0;
+
 /// The kernel task scheduler
 struct Scheduler {
     /// The list of outstanding continuations that have yet to be scheduled, along with the event
@@ -121,25 +127,32 @@ pub fn init(init: Continuation) {
         current_stack: Stack::new(),
         clean_stack: Stack::new(),
     });
+
+    // Set the current stack
+    unsafe {
+        CURRENT_STACK_HEAD = s.as_ref().unwrap().current_stack.first_rsp() as u64;
+    }
 }
 
 /// Run the scheduler to choose a task. Then switch to that task, discarding the current task as
 /// complete. This should be called after all clean up has been completed. If no next task exists,
 /// the idle continuation is used.
 pub fn sched() -> ! {
-    let rsp = {
-        // Get the scheduler
-        let mut s = SCHEDULER.lock();
-        let s = s.as_mut().unwrap();
+    // Get the scheduler
+    let mut sched = SCHEDULER.lock();
+    let s = sched.as_mut().unwrap();
 
-        // Make the clean stack the current stack
-        mem::swap(&mut s.current_stack, &mut s.clean_stack);
+    // Make the clean stack the current stack
+    mem::swap(&mut s.current_stack, &mut s.clean_stack);
 
-        // switch to clean stack.
-        s.current_stack.first_rsp()
+    // switch to clean stack.
+    let rsp = s.current_stack.first_rsp();
 
-        // Lock dropped, borrows end, etc. when we call `part_2_thunk`
-    };
+    unsafe {
+        CURRENT_STACK_HEAD = rsp as u64;
+    }
+
+    drop(sched); // unlock
 
     unsafe {
         sched_part_2_thunk(rsp);
@@ -166,23 +179,21 @@ unsafe fn sched_part_2_thunk(rsp: usize) -> ! {
 /// Now that we are running on the new stack, we can clean the old one. Then, switch to the next
 /// task and start running it.
 unsafe fn sched_part_3() -> ! {
-    let (event, next) = {
-        // Get the scheduler
-        let mut s = SCHEDULER.lock();
-        let s = s.as_mut().unwrap();
+    // Get the scheduler
+    let mut sched = SCHEDULER.lock();
+    let s = sched.as_mut().unwrap();
 
-        // clean old stack
-        s.clean_stack.clear();
+    // clean old stack
+    s.clean_stack.clear();
 
-        // get the next task
-        if let Some(next) = s.next() {
-            next
-        } else {
-            (Event::Now, make_idle_cont())
-        }
-
-        // Lock dropped, borrows end, etc. when we call `part_2_thunk`
+    // get the next task
+    let (event, next) = if let Some(next) = s.next() {
+        next
+    } else {
+        (Event::Now, make_idle_cont())
     };
+
+    drop(sched); // unlock
 
     // run the task
     next.run(event)
