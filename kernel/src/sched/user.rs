@@ -34,7 +34,8 @@ const FMASK: Msr = Msr::new(0xC000_0084);
 /// Returns the virtual address region where the code has been loaded and the first RIP to start
 /// executing.
 pub fn load_user_code_section() -> (ResourceHandle, usize) {
-    let user_code_section = VirtualMemoryRegion::alloc_with_guard(1).register(); // TODO
+    // TODO: Allocate enough space for the code we will load
+    let user_code_section = VirtualMemoryRegion::alloc_with_guard(1).register();
 
     // Map the code section.
     map_region(
@@ -50,7 +51,8 @@ pub fn load_user_code_section() -> (ResourceHandle, usize) {
             // here:
             0x54, // push %rsp
             0x58, // pop %rax
-            0x0f, 0x05, // syscall
+            //0x0f, 0x05, // syscall // TODO uncomment this when syscall handling is implemented
+            0x90, 0x90, // nop; nop
             0xeb, 0xfa, // jmp here
             0x90, // nop
             0x90, // nop
