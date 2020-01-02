@@ -25,8 +25,8 @@ use x86_64::{
     structures::{
         idt::{InterruptStackFrame, PageFaultErrorCode},
         paging::{
-            FrameAllocator, Mapper, Page, PageSize, PageTable, PageTableFlags, PhysFrame,
-            RecursivePageTable, Size2MiB, Size4KiB, UnusedPhysFrame,
+            FrameAllocator, Mapper, Page, PageSize, PageTable, PageTableFlags, PageTableIndex,
+            PhysFrame, RecursivePageTable, Size2MiB, Size4KiB, UnusedPhysFrame,
         },
     },
     PhysAddr, VirtAddr,

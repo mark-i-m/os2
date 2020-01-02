@@ -102,10 +102,11 @@ pub fn init() {
         // - Kernel mode SS is bits 47:32 + 8
         // - User mode CS is bits 63:48 + 16
         // - User mode SS is bits 63:48 + 8
+        //
+        // Each entry in the GDT is 8B...
         let selectors = SELECTORS.lock();
         let kernel_base: u16 = selectors.kernel_cs.index() * 8;
-        printk!("k {} u {}", kernel_base, selectors.user_ss.index());
-        let user_base: u16 = selectors.user_ss.index() * 8 - 8;
+        let user_base: u16 = (selectors.user_ss.index() - 1) * 8;
         let star: u64 = ((kernel_base as u64) << 32) | ((user_base as u64) << 48);
         STAR.write(star);
 
@@ -113,6 +114,7 @@ pub fn init() {
         LSTAR.write(handle_syscall as u64);
 
         // FMASK: rflags mask: any set bits are cleared on syscall
+        // TODO: probably want to disable interrupts until we switch to kernel stack
         FMASK.write(0);
     }
 }
@@ -129,7 +131,16 @@ pub fn switch_to_user(code: (ResourceHandle, usize), stack: ResourceHandle) -> !
 
     let (_handle, rip) = code;
 
-    let rflags = (rflags::read() | rflags::RFlags::INTERRUPT_FLAG).bits();
+    //let rflags = (rflags::read() | rflags::RFlags::INTERRUPT_FLAG).bits(); // TODO uncomment
+    let rflags = (rflags::read()).bits();
+
+    printk!(
+        "Switching to user mode with rip={:x} rsp={:x} rflags={:b} STAR={:x}\n",
+        rip as u64,
+        rsp as u64,
+        rflags as u64,
+        unsafe { STAR.read() },
+    );
 
     // TODO: save kernel stack location somewhere so that we can switch back to it during an
     // interrupt. Or do we need to? The scheduler already knows where its two stacks are... can we

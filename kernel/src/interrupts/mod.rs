@@ -32,6 +32,7 @@ static TSS: Mutex<Option<TaskStateSegment>> = Mutex::new(None);
 /// Interrupt Descriptor Table.
 pub static IDT: Mutex<Option<InterruptDescriptorTable>> = Mutex::new(None);
 
+#[derive(Debug)]
 pub struct Selectors {
     pub kernel_cs: SegmentSelector,
     pub kernel_ss: SegmentSelector,
@@ -43,8 +44,8 @@ pub struct Selectors {
 pub static SELECTORS: Mutex<Selectors> = Mutex::new(Selectors {
     kernel_cs: SegmentSelector::new(0, PrivilegeLevel::Ring0),
     kernel_ss: SegmentSelector::new(0, PrivilegeLevel::Ring0),
-    user_cs: SegmentSelector::new(0, PrivilegeLevel::Ring0),
-    user_ss: SegmentSelector::new(0, PrivilegeLevel::Ring0),
+    user_cs: SegmentSelector::new(0, PrivilegeLevel::Ring3),
+    user_ss: SegmentSelector::new(0, PrivilegeLevel::Ring3),
     tss: SegmentSelector::new(0, PrivilegeLevel::Ring0),
 });
 
