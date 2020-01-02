@@ -238,13 +238,8 @@ fn init_early_paging(boot_info: &'static BootInfo) {
     printk!("\tearly page tables inited\n");
 }
 
-/// Initialize the physical and virtual memory allocators. Set up paging properly.
-///
-/// Before this, we have a single set of page tables that direct maps the first 2MiB of memory.
-///
-/// Afterwards, we have set up the phyiscal memory allocator, set up page tables for the single
-/// address space, set up the null page, extend the kernel heap, set up the virtual memory
-/// allocator for the single address space, and reserve the kernel virtual memory area.
+/// Do late paging initialization. At this point we have a working physical memory allocator and
+/// kernel heap.
 pub fn init(boot_info: &'static BootInfo) {
     ///////////////////////////////////////////////////////////////////////////
     // Set up the virtual address space allocator with 48-bits of virtual memory. Reserve the
@@ -263,6 +258,51 @@ pub fn init(boot_info: &'static BootInfo) {
     *allowed = Some(BTreeMap::new());
 
     printk!("\tvirtual address allocator inited\n");
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Initially all page table entries are black listed for userspace, but we want to disable at
+    // finer granularity, so we will enable the user accessible bit for the top two levels page
+    // tables.
+    //
+    // Any subsequent allocations will then set their own permissions.
+    ///////////////////////////////////////////////////////////////////////////
+
+    let pml4 = unsafe { &mut *(boot_info.recursive_page_table_addr as *mut PageTable) };
+
+    let recursive_index =
+        PageTableIndex::new(((boot_info.recursive_page_table_addr >> 12) & 0b111_111_111) as u16);
+
+    for pml4_index in 0..512 {
+        // Skip unused entries
+        if pml4[pml4_index].is_unused() {
+            continue;
+        }
+
+        // Set the pml4 entry's flag
+        let flags = pml4[pml4_index].flags();
+        pml4[pml4_index].set_flags(flags | PageTableFlags::USER_ACCESSIBLE);
+
+        // Iterate through its pdpt and set appropriate flags there too...
+        let pdpt_page: *const PageTable = Page::from_page_table_indices(
+            recursive_index,
+            recursive_index,
+            recursive_index,
+            PageTableIndex::new(pml4_index as u16),
+        )
+        .start_address()
+        .as_ptr();
+        let pdpt = unsafe { &mut *(pdpt_page as *mut PageTable) };
+
+        for pdpt_index in 0..512 {
+            if pdpt[pdpt_index].is_unused() {
+                continue;
+            }
+
+            // Set the pdpt entry's flag
+            let flags = pdpt[pdpt_index].flags();
+            pdpt[pdpt_index].set_flags(flags | PageTableFlags::USER_ACCESSIBLE);
+        }
+    }
 }
 
 /// Capability on a memory region.
