@@ -135,6 +135,5 @@ fn late_init() {
     printk!("Capabilities ✔\n");
 
     // We can turn on interrupts now.
-    //x86_64::instructions::interrupts::enable();
-    // TODO uncomment ^^
+    x86_64::instructions::interrupts::enable();
 }
