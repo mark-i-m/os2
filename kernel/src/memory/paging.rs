@@ -415,7 +415,7 @@ pub extern "x86-interrupt" fn handle_page_fault(
         // Demand paging
         Some((&start, (len, flags))) if cr2 >= start && cr2 < start + len => {
             printk!(
-                "Page fault at ip {:x}, addr {:x}. Found region start: {:x}, len: {}, flags: {:?}\n",
+                "Page fault\n\tip {:x}, addr {:x}.\n\tFound region start: {:x}, len: {}\n\tflags: {:?}\n",
                 esf.instruction_pointer.as_u64(),
                 cr2,
                 start,
@@ -439,7 +439,7 @@ pub extern "x86-interrupt" fn handle_page_fault(
                 .map_to(page, frame, *flags, PHYS_MEM_ALLOC.lock().as_mut().unwrap())
                 .expect("Unable to map page");
 
-            printk!("Done with page fault.\n");
+            printk!("\tDone with page fault.\n");
         }
 
         // Segfault
