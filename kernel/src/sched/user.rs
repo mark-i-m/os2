@@ -179,15 +179,6 @@ mod syscall {
 
     use super::SavedRegs;
 
-    /// We use this structure as our tmp stack. Recall that the stack grows down.
-    #[repr(C, packed)]
-    struct TmpStack {
-        _extra_stack_space: [u8; 200],
-
-        /// Stack begins at `saved_regs.rsp + 8`
-        saved_regs: SavedRegs,
-    }
-
     /// Handle a `syscall` instruction from userspace.
     ///
     /// This is not to be called from kernel mode! And it should never be called more than once at a
@@ -202,35 +193,6 @@ mod syscall {
     /// - We will return values in %rax
     #[naked]
     pub(super) unsafe extern "C" fn entry() {
-        // When we first enter, we need to save the registers and switch to the kernel stack, but we
-        // can only use 1 register (%rcx). So we keep a small amount of memory here with a known
-        // address. When we first switch to kernel space, we use this memory as a stack just enough to
-        // do the computation to find out where the real stack is.
-        static mut TMP_STACK: TmpStack = TmpStack {
-            /// 200B seems to be enough...
-            _extra_stack_space: [0; 200],
-            saved_regs: SavedRegs {
-                rax: 0,
-                rbx: 0,
-                rcx: 0,
-                rdx: 0,
-                rdi: 0,
-                rsi: 0,
-                rbp: 0,
-                r8: 0,
-                r9: 0,
-                r10: 0,
-                r11: 0,
-                r12: 0,
-                r13: 0,
-                r14: 0,
-                r15: 0,
-                rflags: 0,
-                rip: 0,
-                rsp: 0,
-            },
-        };
-
         // Switch to tmp stack, save user regs
         asm!(
             "
@@ -239,59 +201,57 @@ mod syscall {
 
             # switch to the tmp stack
             mov $0, %rsp
-            # because we would be one word off... unfortunately constants can't refer to statics yet...
-            add $$8, %rsp
+            mov (%rsp), %rsp
 
             # start saving stuff
-            push %rdx # user rsp
-            push %rcx # user rip
-            push %r11 # user rflags
+            pushq %rdx # user rsp
+            pushq %rcx # user rip
+            pushq %r11 # user rflags
 
-            push %r15
-            push %r14
-            push %r13
-            push %r12
-            push %r11
-            push %r10
-            push %r9
-            push %r8
-            push %rbp
-            push %rsi
-            push %rdi
-            push %rdx
-            push %rcx
-            push %rbx
-            push %rax
+            pushq %r15
+            pushq %r14
+            pushq %r13
+            pushq %r12
+            pushq %r11
+            pushq %r10
+            pushq %r9
+            pushq %r8
+            pushq %rbp
+            pushq %rsi
+            pushq %rdi
+            pushq %rdx
+            pushq %rcx
+            pushq %rbx
+            pushq %rax
+
+            # handle the system call. The saved registers are passed at the top of the stack where
+            # we just pushed them.
+            mov %rsp, %rdi
+            call handle_syscall
             "
             : /* no outputs */
-            : "i"((&TMP_STACK.saved_regs.rsp) as *const u64)
-            : "memory", "rsp", "rcx"
+            : "i"(&super::super::CURRENT_STACK_HEAD)
+            : "memory", "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12",
+              "r13", "r14", "r15", "rbp", "stack"
             : "volatile"
         );
 
-        handle_syscall(&TMP_STACK);
+        unreachable!();
     }
 
     /// Does the actual work of handling a syscall. Should only be called by `syscall_entry`. This
     /// assumes we are still running on the tmp stack. It switches to the saved kernel stack.
-    unsafe fn handle_syscall(tmp_stack: &'static TmpStack) {
-        // Switch to the real kernel stack
-        asm!(
-            "mov $0, %rsp"
-            : /* no outputs */
-            : "m"(super::super::CURRENT_STACK_HEAD)
-            : "memory", "rsp"
-            : "volatile"
-        );
+    #[no_mangle]
+    unsafe extern "C" fn handle_syscall(saved_regs: &mut SavedRegs) {
+        // TODO: can probably enable interrupts here...
 
-        // TODO: perhaps we can enable interrupts at this point? Or are their weird races with
-        // different stacks?
-
-        // TODO: handle system call
-        printk!("syscall {:x}\n", tmp_stack.saved_regs.rax);
+        // Handle the system call. The syscall number is passed in %rax.
+        match saved_regs.rax {
+            n => printk!("syscall #{:#x?}\n", n),
+        }
 
         // Return to usermode
-        switch_to_user(&tmp_stack.saved_regs)
+        switch_to_user(saved_regs)
     }
 
     /// Switch to user mode with the given registers.
@@ -308,32 +268,32 @@ mod syscall {
             asm!(
                 "
                 # restore registers
-                mov $0, %rax
-                mov $1, %rbx
-                mov $2, %rdx
-                mov $3, %rdi
-                mov $4, %rsi
-                mov $5, %rbp
-                mov $6, %r8
-                mov $7, %r9
-                mov $8, %r10
-                mov $9, %r12
-                mov $10, %r13
-                mov $11, %r14
-                mov $12, %r15
+                movq $0, %rax
+                movq $1, %rbx
+                movq $2, %rdx
+                movq $3, %rdi
+                movq $4, %rsi
+                movq $5, %rbp
+                movq $6, %r8
+                movq $7, %r9
+                movq $8, %r10
+                movq $9, %r12
+                movq $10, %r13
+                movq $11, %r14
+                movq $12, %r15
 
                 # user rflags
-                mov $13, %r11
+                movq $13, %r11
 
                 # user rip
-                mov $14, %rcx
+                movq $14, %rcx
 
                 # disable interrupts before loading the user stack; otherwise, an interrupt may be
                 # serviced on the wrong stack.
                 cli
 
                 # no more stack refs until sysret
-                mov $15, %rsp
+                movq $15, %rsp
 
                 # return to usermode (ring 3)
                 sysretq
@@ -356,7 +316,7 @@ mod syscall {
                 , "m"(registers.rip)
                 , "m"(registers.rsp)
                 : "memory", "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12",
-                  "r13", "r14", "r15"
+                  "r13", "r14", "r15", "rbp"
                 : "volatile"
             );
         }
