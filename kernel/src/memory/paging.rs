@@ -395,6 +395,9 @@ pub extern "x86-interrupt" fn handle_page_fault(
     // correct error code.
     _error: PageFaultErrorCode,
 ) {
+    // TODO: make sure interrupts are off... otherwise there is a race where an interrupt handler
+    // takes a page fault and we lose CR2 for this page fault...
+
     // Read CR2 to get the page fault address
     let cr2: u64;
     unsafe {
