@@ -14,6 +14,7 @@ x86_64 = { git = "https://github.com/mark-i-m/x86_64", branch = "fix-flags" }
 os_bootinfo = "0.2.1"
 rand = { version = "0.6", default-features = false, features = ["alloc"] }
 bootloader = { version = "0.8.3", features = ["recursive_page_table"]}
+elfloader = "0.9.0"
 
 [package.metadata.bootimage]
 default-target = "x86_64-unknown-elf.json"

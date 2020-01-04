@@ -7,7 +7,7 @@ use x86_64::structures::idt::InterruptDescriptorTable;
 use crate::interrupts::IRQ_IST_FRAME_INDEX;
 
 pub use self::heap::KernelAllocator;
-pub use self::paging::{map_region, VirtualMemoryRegion};
+pub use self::paging::{map_region, VirtualMemoryRegion, AVAILABLE_VADDR_START};
 
 mod heap;
 mod paging;

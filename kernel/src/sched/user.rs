@@ -1,11 +1,16 @@
 //! System calls and kernel <-> user mode switching...
 
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
+
+use elfloader::{ElfBinary, ElfLoader, LoadableHeaders, Rela, TypeRela64, VAddr, P64};
+
 use x86_64::{
     registers::{
         model_specific::{Efer, EferFlags, Msr},
         rflags::{self, RFlags},
     },
-    structures::paging::PageTableFlags,
+    structures::paging::{PageSize, PageTableFlags, Size4KiB},
 };
 
 use crate::{
@@ -52,51 +57,108 @@ struct SavedRegs {
     pub rsp: u64,
 }
 
-/// Allocates virtual address space, adds appropriate page table mappings, loads the specified code
-/// section into the allocated memory.
-///
-/// Returns the virtual address region where the code has been loaded and the first RIP to start
-/// executing.
-pub fn load_user_code_section() -> (ResourceHandle, usize) {
-    // TODO: Allocate enough space for the code we will load
-    let user_code_section = VirtualMemoryRegion::alloc_with_guard(1).register();
+/// An ELF loader that loads binaries for execution in userspace.
+struct KElfLoader {
+    /// Base virtual address for the binary. All addresses in the binary are offset by this
+    /// address.
+    vbase: u64,
 
-    // Map the code section.
-    map_region(
-        user_code_section,
-        PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE,
-    );
+    /// Resource handles for all code sections loaded, indexed by starting address of the ELF
+    /// region in memory.
+    user_code_sections: BTreeMap<u64, ResourceHandle>,
+}
 
-    // TODO: load the code
+impl KElfLoader {
+    pub fn new() -> Self {
+        KElfLoader {
+            vbase: crate::memory::AVAILABLE_VADDR_START,
+            user_code_sections: BTreeMap::new(),
+        }
+    }
+}
 
-    // TODO: this is test code that is an infinite loop followed by nops
-    let start_addr = user_code_section.with(|cap| {
-        const TEST_CODE: &[u8] = &[
-            // here:
-            0x54, // push %rsp
-            0x58, // pop %rax
-            0x0f, 0x05, // syscall
-            0xeb, 0xfa, // jmp here
-            0x90, // nop
-            0x90, // nop
-            0x90, // nop
-            0x90, // nop
-            0x90, // nop
-            0x90, // nop
-            0x90, // nop
-            0x90, // nop
-        ];
+impl ElfLoader for KElfLoader {
+    fn allocate(&mut self, load_headers: LoadableHeaders) -> Result<(), &'static str> {
+        for header in load_headers {
+            let size = header.mem_size();
+            let size = if size % Size4KiB::SIZE == 0 {
+                size >> 12
+            } else {
+                (size >> 12) + 1
+            };
+            let user_code_section = VirtualMemoryRegion::alloc_with_guard(size as usize).register();
 
-        unsafe {
+            // Map the code section.
+            map_region(
+                user_code_section,
+                PageTableFlags::PRESENT
+                    | PageTableFlags::WRITABLE
+                    | PageTableFlags::USER_ACCESSIBLE,
+            );
+
+            self.user_code_sections
+                .insert(header.virtual_addr(), user_code_section);
+        }
+
+        Ok(())
+    }
+
+    fn relocate(&mut self, entry: &Rela<P64>) -> Result<(), &'static str> {
+        let typ = TypeRela64::from(entry.get_type());
+        let addr: *mut u64 = (self.vbase + entry.get_offset()) as *mut u64;
+
+        match typ {
+            TypeRela64::R_RELATIVE => {
+                // This is a relative relocation, add the offset (where we put our
+                // binary in the vspace) to the addend and we're done.
+                todo!(
+                    "R_RELATIVE *{:p} = {:#x}",
+                    addr,
+                    self.vbase + entry.get_addend()
+                );
+                Ok(())
+            }
+            _ => Err("Unexpected relocation encountered"),
+        }
+    }
+
+    fn load(&mut self, base: VAddr, region: &[u8]) -> Result<(), &'static str> {
+        let user_code_section = self.user_code_sections[&base];
+
+        // Load the segment at base + self.vbase
+        user_code_section.with(|cap| unsafe {
             let start = cap_unwrap!(VirtualMemoryRegion(cap)).start();
-            for (i, b) in TEST_CODE.iter().enumerate() {
+            for (i, b) in region.iter().enumerate() {
                 start.offset(i as isize).write(*b);
             }
             start as usize
-        }
-    });
+        });
 
-    (user_code_section, start_addr)
+        Ok(())
+    }
+}
+
+/// Allocates virtual address space(s), adds appropriate page table mappings, loads the given ELF
+/// binary into the allocated memory. `binary` should be the bytes of an ELF file, including the
+/// magic bytes, headers, text, etc.
+///
+/// Returns the virtual address regions where the code has been loaded and the first RIP to start
+/// executing.
+pub fn load_user_elf(binary: &[u8]) -> (Vec<ResourceHandle>, u64) {
+    let mut loader = KElfLoader::new();
+    let bin = ElfBinary::new("user", binary).expect("Not an ELF binary");
+    bin.load(&mut loader).expect("Unable to load ELF binary");
+
+    let entry = bin.entry_point() + loader.vbase;
+
+    (
+        loader
+            .user_code_sections
+            .into_iter()
+            .map(|(_, rh)| rh)
+            .collect(),
+        entry,
+    )
 }
 
 /// Allocates virtual address space for the user stack (fixed size). Adds appropriate page table
@@ -150,23 +212,14 @@ pub fn init() {
     }
 }
 
-pub fn start_user_task(code: (ResourceHandle, usize), stack: ResourceHandle) -> ! {
-    // Compute new register values
-    let rsp = stack.with(|cap| {
-        let region = cap_unwrap!(VirtualMemoryRegion(cap));
-        let start = region.start();
-        let len = region.len();
-        unsafe { start.offset(len as isize) }
-    });
-
-    let (_handle, rip) = code;
-
+pub fn start_user_task(start_rip: u64, start_rsp: u64) -> ! {
     // Enable interrupts for user mode.
     let rflags = (rflags::read() | rflags::RFlags::INTERRUPT_FLAG).bits();
 
+    // Initial registers zeroed except for the specified ones.
     let registers = SavedRegs {
-        rip: rip as u64,
-        rsp: rsp as u64,
+        rip: start_rip,
+        rsp: start_rsp,
         rflags,
         ..SavedRegs::default()
     };

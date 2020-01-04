@@ -7,6 +7,7 @@
 //! - Pages [2MB, 32MB-1): reserved for kernel text (with kernel loaded at start of this region)
 //! - Page 32MB-1: heap guard page (to defend against heap errors spilling into the kernel text)
 //! - Page [32MB, 36MB): kernel heap
+//! - Page [40MB, ...): available address space for applications
 //!
 //! Physical memory is arranged by the bootloader, which first runs E820 to get a memory map. The
 //! `BootInfo` struct contains the current state of memory, including memory already allocated by
@@ -62,6 +63,8 @@ pub const KERNEL_HEAP_START: u64 = KERNEL_HEAP_GUARD + (1 << 12);
 /// 2MiB pages.
 pub const KERNEL_HEAP_SIZE: u64 = 4 << 20; // 4MiB
 
+pub const AVAILABLE_VADDR_START: u64 = 40 << 20; // 40MiB
+
 /// The number of bits of virtual address space.
 const ADDRESS_SPACE_WIDTH: u8 = 48;
 
@@ -69,7 +72,7 @@ const ADDRESS_SPACE_WIDTH: u8 = 48;
 const VIRT_ADDR_AVAILABLE: &[(usize, usize)] = &[
     // Lower half - kernel
     (
-        (KERNEL_HEAP_START + KERNEL_HEAP_SIZE) as usize,
+        AVAILABLE_VADDR_START as usize,
         (1 << (ADDRESS_SPACE_WIDTH - 1)) - 1,
     ),
     // Higher half
