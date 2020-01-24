@@ -11,9 +11,12 @@ this repo. Generally, `master` should compile and run.
 
 - Userspace
     - Need to load the user code into the new virtual memory region.
-        - Need some sort of ELF loader... `gz/rust-elfloader` looks promising.
-        - Will probably just hard-code binary into an array with initially... I
-          don't really want to implement a file system.
+        - Using `gz/rust-elfloader` to load ELFs.
+        - Hard-code binary into an array with initially... I don't really want
+          to implement a file system.
+
+- Execute position-indep binaries in usermode. All executables need to be
+  position-independent.
 
 - Paging
     - `memory::paging::map_region`
@@ -54,9 +57,6 @@ dependencies). Not bad!
 - System calls via `syscall` and `sysret` instructions.
 
 # TODO
-
-- Execute position-indep binaries in usermode. All executables need to be
-  position-independent.
 
 - System calls for usermode continuations to indicate their termination and
   schedule the next continuation, possibly pending an event.

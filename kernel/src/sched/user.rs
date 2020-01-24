@@ -75,6 +75,27 @@ impl KElfLoader {
             user_code_sections: BTreeMap::new(),
         }
     }
+
+    /// Get the address at which `raw_address` has been loaded.
+    pub fn compute_loaded_address(&self, address: u64) -> u64 {
+        let (base, loaded_base) = self
+            .user_code_sections
+            .range(((address >> 12) << 12)..=address)
+            .next()
+            .map(|(base, address)| {
+                (
+                    base,
+                    address.with(|cap| unsafe { cap_unwrap!(VirtualMemoryRegion(cap)).start() }),
+                )
+            })
+            .unwrap();
+
+        let diff = address - base;
+
+        let start = unsafe { loaded_base.add(diff as usize) };
+
+        start as u64
+    }
 }
 
 impl ElfLoader for KElfLoader {
@@ -131,7 +152,6 @@ impl ElfLoader for KElfLoader {
             for (i, b) in region.iter().enumerate() {
                 start.offset(i as isize).write(*b);
             }
-            start as usize
         });
 
         Ok(())
@@ -149,7 +169,7 @@ pub fn load_user_elf(binary: &[u8]) -> (Vec<ResourceHandle>, u64) {
     let bin = ElfBinary::new("user", binary).expect("Not an ELF binary");
     bin.load(&mut loader).expect("Unable to load ELF binary");
 
-    let entry = bin.entry_point() + loader.vbase;
+    let entry = loader.compute_loaded_address(bin.entry_point());
 
     (
         loader
@@ -215,6 +235,12 @@ pub fn init() {
 pub fn start_user_task(start_rip: u64, start_rsp: u64) -> ! {
     // Enable interrupts for user mode.
     let rflags = (rflags::read() | rflags::RFlags::INTERRUPT_FLAG).bits();
+
+    printk!(
+        "Starting user task at rip={:x}, rsp={:x}\n",
+        start_rip,
+        start_rsp
+    );
 
     // Initial registers zeroed except for the specified ones.
     let registers = SavedRegs {
@@ -296,10 +322,16 @@ mod syscall {
     /// assumes we are still running on the tmp stack. It switches to the saved kernel stack.
     #[no_mangle]
     unsafe extern "C" fn handle_syscall(saved_regs: &mut SavedRegs) {
-        // TODO: can probably enable interrupts here...
+        todo!("Enable interrupts here");
+        // x86_64::instructions::interrupts::enable();
 
         // Handle the system call. The syscall number is passed in %rax.
         match saved_regs.rax {
+            0 => {
+                printk!("Task completed.\n");
+
+                crate::sched::sched();
+            }
             n => printk!("syscall #{:#x?}\n", n),
         }
 
@@ -320,56 +352,45 @@ mod syscall {
         unsafe {
             asm!(
                 "
+                # load address of `registers` to `rcx` in inline asm
+
                 # restore registers
-                movq $0, %rax
-                movq $1, %rbx
-                movq $2, %rdx
-                movq $3, %rdi
-                movq $4, %rsi
-                movq $5, %rbp
-                movq $6, %r8
-                movq $7, %r9
-                movq $8, %r10
-                movq $9, %r12
-                movq $10, %r13
-                movq $11, %r14
-                movq $12, %r15
+                movq     (%rcx), %rax
+                movq  0x8(%rcx), %rbx
+
+                movq 0x18(%rcx), %rdx
+                movq 0x20(%rcx), %rdi
+                movq 0x28(%rcx), %rsi
+                movq 0x30(%rcx), %rbp
+                movq 0x38(%rcx), %r8
+                movq 0x40(%rcx), %r9
+                movq 0x48(%rcx), %r10
+
+                movq 0x58(%rcx), %r12
+                movq 0x60(%rcx), %r13
+                movq 0x68(%rcx), %r14
+                movq 0x70(%rcx), %r15
 
                 # user rflags
-                movq $13, %r11
-
-                # user rip
-                movq $14, %rcx
+                movq 0x78(%rcx), %r11
 
                 # disable interrupts before loading the user stack; otherwise, an interrupt may be
                 # serviced on the wrong stack.
                 cli
 
                 # no more stack refs until sysret
-                movq $15, %rsp
+                movq 0x88(%rcx), %rsp
+
+                # user rip
+                movq 0x80(%rcx), %rcx
 
                 # return to usermode (ring 3)
                 sysretq
                 "
                 : /* no outputs */
-                : "m"(registers.rax)
-                , "m"(registers.rbx)
-                , "m"(registers.rdx)
-                , "m"(registers.rdi)
-                , "m"(registers.rsi)
-                , "m"(registers.rbp)
-                , "m"(registers.r8)
-                , "m"(registers.r9)
-                , "m"(registers.r10)
-                , "m"(registers.r12)
-                , "m"(registers.r13)
-                , "m"(registers.r14)
-                , "m"(registers.r15)
-                , "m"(registers.rflags)
-                , "m"(registers.rip)
-                , "m"(registers.rsp)
-                : "memory", "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12",
-                  "r13", "r14", "r15", "rbp"
+                : "{rcx}"(registers)
+                : "memory", "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11",
+                  "r12", "r13", "r14", "r15", "rbp", "rsp", "stack"
                 : "volatile"
             );
         }

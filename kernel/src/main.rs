@@ -105,22 +105,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                             Continuation::new(|_| {
                                 printk!("Attempting to switch to user!\n");
 
-                                let (_handle, rip) = user::load_user_elf(&[
-                                    // TODO: this is not an ELF file!
-                                    // here:
-                                    0x54, // push %rsp
-                                    0x58, // pop %rax
-                                    0x0f, 0x05, // syscall
-                                    0xeb, 0xfa, // jmp here
-                                    0x90, // nop
-                                    0x90, // nop
-                                    0x90, // nop
-                                    0x90, // nop
-                                    0x90, // nop
-                                    0x90, // nop
-                                    0x90, // nop
-                                    0x90, // nop
-                                ]);
+                                let (_handle, rip) =
+                                    user::load_user_elf(core::include_bytes!("../../user/test"));
                                 let rsp = user::allocate_user_stack().with(|cap| {
                                     let region = cap_unwrap!(VirtualMemoryRegion(cap));
                                     let start = region.start();

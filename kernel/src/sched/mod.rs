@@ -209,6 +209,8 @@ pub fn make_idle_cont() -> Continuation {
         // Wait a bit before rescheduling
         x86_64::instructions::hlt();
 
+        printk!("Idle\n");
+
         sched();
     })
 }
