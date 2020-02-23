@@ -10,6 +10,11 @@ this repo. Generally, `master` should compile and run.
 # WIP
 
 - Userspace
+    - Looks like I need to look into the following flags on the GDT entries
+      for the kernel code and data segments, which are causing #GP(0x10) on
+      iretq after a syscall. 
+        - make sure cs desc is readable, ss is writable, both 64-bit (L bit set)
+
     - Need to load the user code into the new virtual memory region.
         - Using `gz/rust-elfloader` to load ELFs.
         - Hard-code binary into an array with initially... I don't really want

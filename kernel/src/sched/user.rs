@@ -322,8 +322,8 @@ mod syscall {
     /// assumes we are still running on the tmp stack. It switches to the saved kernel stack.
     #[no_mangle]
     unsafe extern "C" fn handle_syscall(saved_regs: &mut SavedRegs) {
-        todo!("Enable interrupts here");
-        // x86_64::instructions::interrupts::enable();
+        //todo!("Enable interrupts here");
+        x86_64::instructions::interrupts::enable();
 
         // Handle the system call. The syscall number is passed in %rax.
         match saved_regs.rax {

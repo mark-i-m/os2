@@ -87,6 +87,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         //
 
         // Run a test
+        /* TODO: uncomment
         ContResult::Success(vec![(
             EventKind::Until(SysTime::now().after(4)),
             Continuation::new(|_| {
@@ -99,28 +100,30 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                         } else {
                             unreachable!();
                         }
+                */
 
-                        ContResult::Success(vec![(
-                            EventKind::Now,
-                            Continuation::new(|_| {
-                                printk!("Attempting to switch to user!\n");
+        ContResult::Success(vec![(
+            EventKind::Now,
+            Continuation::new(|_| {
+                printk!("Attempting to switch to user!\n");
 
-                                let (_handle, rip) =
-                                    user::load_user_elf(core::include_bytes!("../../user/test"));
-                                let rsp = user::allocate_user_stack().with(|cap| {
-                                    let region = cap_unwrap!(VirtualMemoryRegion(cap));
-                                    let start = region.start();
-                                    let len = region.len();
-                                    unsafe { start.offset(len as isize) }
-                                });
+                let (_handle, rip) = user::load_user_elf(core::include_bytes!("../../user/test"));
+                let rsp = user::allocate_user_stack().with(|cap| {
+                    let region = cap_unwrap!(VirtualMemoryRegion(cap));
+                    let start = region.start();
+                    let len = region.len();
+                    unsafe { start.offset(len as isize) }
+                });
 
-                                user::start_user_task(rip as u64, rsp as u64);
-                            }),
-                        )])
+                user::start_user_task(rip as u64, rsp as u64);
+            }),
+        )])
+        /*
                     }),
                 )])
             }),
         )])
+        */
     }));
 
     printk!(" ✔\n");
@@ -139,5 +142,5 @@ fn late_init() {
     printk!("Capabilities ✔\n");
 
     // We can turn on interrupts now.
-    x86_64::instructions::interrupts::enable();
+    //x86_64::instructions::interrupts::enable(); // TODO uncomment
 }
