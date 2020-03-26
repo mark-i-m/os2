@@ -206,10 +206,13 @@ pub fn enqueue(cont: Vec<(EventKind, Continuation)>) {
 /// Returns the idle continuation.
 pub fn make_idle_cont() -> Continuation {
     Continuation::new(|_| {
+        printk!("Idle\n");
+
+        // Make sure interrupts are enabled here. Otherwise, hlt will never return.
+        x86_64::instructions::interrupts::enable();
+
         // Wait a bit before rescheduling
         x86_64::instructions::hlt();
-
-        printk!("Idle\n");
 
         sched();
     })
