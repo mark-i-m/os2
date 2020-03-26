@@ -94,6 +94,8 @@ dependencies). Not bad!
 
 To build and run
 ```console
-$ cd os2/kernel
+$ cd os2/user
+$ make
+$ cd ../kernel
 $ bootimage run # --release for optimized build
 ```
