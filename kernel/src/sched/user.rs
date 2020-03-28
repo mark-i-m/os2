@@ -218,7 +218,7 @@ pub fn init() {
         // Each entry in the GDT is 8B...
         let selectors = SELECTORS.lock();
         let kernel_base: u16 = selectors.kernel_cs.index() * 8;
-        let user_base: u16 = (selectors.user_ss.index() - 1) * 8;
+        let user_base: u16 = (selectors.user_ds.index() - 1) * 8;
         let star: u64 = ((kernel_base as u64) << 32) | ((user_base as u64) << 48);
         STAR.write(star);
 
@@ -322,7 +322,7 @@ mod syscall {
     /// assumes we are still running on the tmp stack. It switches to the saved kernel stack.
     #[no_mangle]
     unsafe extern "C" fn handle_syscall(saved_regs: &mut SavedRegs) {
-        //todo!("Enable interrupts here");
+        // Re-enable interrupts
         x86_64::instructions::interrupts::enable();
 
         // Handle the system call. The syscall number is passed in %rax.

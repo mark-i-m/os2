@@ -1,4 +1,38 @@
 //! This module contains everything needed for interrupts
+//!
+//! Some notes:
+//! - 64-bit x86 doesn't use the SS anymore.
+//! - LDT, TSS are considered "system segments" -- segments with special meaning
+//! - You can read about segment selectors and GDT format in Intel SDM Vol 3:
+//!     - ch 3.4.3: Segement registers
+//!     - ch 3.4.4: Segments in 64-bit/long/ia-32e mode
+//!     - ch 3.4.5: Segment descriptors (i.e. GDT, TSS, LDT, IDT format)
+//!          - This is the same for 32- and 64-bit mode for GDT
+//!          - IDT, LDT, and TSS changed formats for 64-bit mode
+//!     - ch 3.5: System Segment Descriptors
+//! - In the GDT, bits that aren't clearly defined as needed can just remain 0. This includes:
+//!     - G, D/B, Limit, AVL
+//! - In the GDT, the L bit should only be set for CS. For DS, it should remain 0, even if 64-bit.
+//!
+//! Here are the bits we want set for the Kernel and user space code and data segment descriptors
+//! in the GDT:
+//!
+//! ```txt
+//! /------ Kernel or User segment
+//! | /---- Code or Data segment
+//! | |  63                                                                        0
+//! | |  bbbbbbbb G D L V llll P PL S tttt bbbbbbbbbbbbbbbbbbbbbbbb llllllllllllllll
+//! v v
+//! K CS 00000000   0 1        1 00 1 101  000000000000000000000000
+//! K DS 00000000     0        1 00 1 001  000000000000000000000000
+//! U CS 00000000   0 1        1 11 1 101  000000000000000000000000
+//! U DS 00000000     0        1 11 1 001  000000000000000000000000
+//! ```
+//!
+//! Any bits that are not specified above are "don't care" and should just be set to 0. See the SDM
+//! chapters mentioned above for the meanings of these bits.
+
+use alloc::boxed::Box;
 
 use spin::Mutex;
 
@@ -11,8 +45,6 @@ use x86_64::{
     },
     PrivilegeLevel, VirtAddr,
 };
-
-use alloc::boxed::Box;
 
 pub use self::pit::HZ as PIT_HZ;
 
@@ -31,6 +63,8 @@ pub const EMERGENCY_IST_FRAME_INDEX: u16 = 0;
 /// stacks in the scheduler.
 pub const IRQ_IST_FRAME_INDEX: u16 = EMERGENCY_IST_FRAME_INDEX + 1;
 
+// See notes at top of file regarding descriptor tables and segments.
+
 /// Global Descriptor Table.
 static GDT: Mutex<Option<GlobalDescriptorTable>> = Mutex::new(None);
 
@@ -43,17 +77,17 @@ pub static IDT: Mutex<Option<InterruptDescriptorTable>> = Mutex::new(None);
 #[derive(Debug)]
 pub struct Selectors {
     pub kernel_cs: SegmentSelector,
-    pub kernel_ss: SegmentSelector,
+    pub kernel_ds: SegmentSelector,
     pub user_cs: SegmentSelector,
-    pub user_ss: SegmentSelector,
+    pub user_ds: SegmentSelector,
     pub tss: SegmentSelector,
 }
 
 pub static SELECTORS: Mutex<Selectors> = Mutex::new(Selectors {
     kernel_cs: SegmentSelector::new(0, PrivilegeLevel::Ring0),
-    kernel_ss: SegmentSelector::new(0, PrivilegeLevel::Ring0),
+    kernel_ds: SegmentSelector::new(0, PrivilegeLevel::Ring0),
     user_cs: SegmentSelector::new(0, PrivilegeLevel::Ring3),
-    user_ss: SegmentSelector::new(0, PrivilegeLevel::Ring3),
+    user_ds: SegmentSelector::new(0, PrivilegeLevel::Ring3),
     tss: SegmentSelector::new(0, PrivilegeLevel::Ring0),
 });
 
@@ -106,25 +140,53 @@ pub fn init() {
     // Initalize GDT
     let mut selectors = SELECTORS.lock();
 
-    // NOTE: kernel CS must be the one before kernel SS
-    selectors.kernel_cs = gdt.add_entry(Descriptor::kernel_code_segment());
-    selectors.kernel_ss = gdt.add_entry(Descriptor::kernel_code_segment());
+    // NOTE: In the descriptors below, the names of the flags are aweful. I have added some
+    // comments to explain their actual meanings.
 
-    // NOTE: user SS must be the one before user CS
-    selectors.user_ss = gdt.add_entry(Descriptor::UserSegment(
-        (DescriptorFlags::USER_SEGMENT
+    // NOTE: kernel CS must be the one before kernel DS
+    selectors.kernel_cs = gdt.add_entry(Descriptor::UserSegment(
+        (
+            DescriptorFlags::LONG_MODE // 64-bit CS (should not be added to DS)
             | DescriptorFlags::PRESENT
+            | DescriptorFlags::USER_SEGMENT // Not a system-segment (e.g. TSS)
+            | DescriptorFlags::EXECUTABLE // CS rather than DS
             | DescriptorFlags::WRITABLE
-            | DescriptorFlags::LONG_MODE
-            | DescriptorFlags::DPL_RING_3)
+            // For CS this bit actually means "readable", not execute-only (this comment applies to
+            // the previous line, but rustfmt keeps moving it...)
+        )
+            .bits(),
+    ));
+    selectors.kernel_ds = gdt.add_entry(Descriptor::UserSegment(
+        (
+            DescriptorFlags::PRESENT
+            | DescriptorFlags::USER_SEGMENT // Not a system-segment (e.g. TSS)
+            | DescriptorFlags::WRITABLE
+            // Makes the DS read/write
+        )
+            .bits(),
+    ));
+
+    // NOTE: user DS must be the one before user CS
+    selectors.user_ds = gdt.add_entry(Descriptor::UserSegment(
+        (
+            DescriptorFlags::PRESENT
+            | DescriptorFlags::DPL_RING_3 // This is a user-space segment
+            | DescriptorFlags::USER_SEGMENT // Not a system-segment (e.g. TSS)
+            | DescriptorFlags::WRITABLE
+            // Makes the DS read/write
+        )
             .bits(),
     ));
     selectors.user_cs = gdt.add_entry(Descriptor::UserSegment(
-        (DescriptorFlags::USER_SEGMENT
+        (
+            DescriptorFlags::LONG_MODE // 64-bit CS (should not be added to DS)
             | DescriptorFlags::PRESENT
-            | DescriptorFlags::EXECUTABLE
-            | DescriptorFlags::LONG_MODE
-            | DescriptorFlags::DPL_RING_3)
+            | DescriptorFlags::DPL_RING_3 // This is a user-space segment
+            | DescriptorFlags::USER_SEGMENT // Not a system-segment (e.g. TSS)
+            | DescriptorFlags::EXECUTABLE // CS rather than DS
+            | DescriptorFlags::WRITABLE
+            // For CS this bit actually means "readable", not execute-only
+        )
             .bits(),
     ));
 
