@@ -1,4 +1,4 @@
-# OS2 [VERY WIP]
+# OS2 [WIP]
 
 This is a small hobby OS to play around with stuff I have never done before...
 it's not intended to be functional, useful, secure, or reliable. It is meant to
@@ -9,28 +9,24 @@ this repo. Generally, `master` should compile and run.
 
 # WIP
 
-- Userspace
-    - Looks like I need to look into the following flags on the GDT entries
-      for the kernel code and data segments, which are causing #GP(0x10) on
-      iretq after a syscall. 
-        - make sure cs desc is readable, ss is writable, both 64-bit (L bit set)
-
-    - Need to load the user code into the new virtual memory region.
-        - Using `gz/rust-elfloader` to load ELFs.
-        - Hard-code binary into an array with initially... I don't really want
-          to implement a file system.
-
-- Execute position-indep binaries in usermode. All executables need to be
-  position-independent.
-
 - Paging
     - `memory::paging::map_region`
     - Need some way of registering valid memory mappings.
     - Page fault handler should check that register and allocate a new page if needed.
 
+- Zero-copy message passing for IPC. To send a message,
+    - Remove from sender page tables
+    - Remove from sender TLB
+    - Insert page into receiver page tables
+    - Allow the receiver to fault to map the page. Process receives message via
+      the normal future polling.
+
+- I am toying with the idea of not having processes at all, just DAGs of
+  continuations which may or may not choose to pass on their capabilities.
+
 # Already implemented
 
-Currently its a little over 1300 LOC (not including comments + whitespace +
+Currently its a little over 1500 LOC (not including comments + whitespace +
 dependencies). Not bad!
 
 - The kernel itself is continuation-based, rather than using something like
@@ -61,20 +57,17 @@ dependencies). Not bad!
 
 - System calls via `syscall` and `sysret` instructions.
 
+- Loading a position-independent ELF binary as a user-mode task, running it,
+  and exiting via a syscall.
+
 # TODO
 
-- System calls for usermode continuations to indicate their termination and
-  schedule the next continuation, possibly pending an event.
+Now that I have a mostly functioning basic kernel, I can start playing around
+with stuff!
 
-- Zero-copy message passing for IPC. To send a message,
-    - Remove from sender page tables
-    - Remove from sender TLB
-    - Insert page into receiver page tables
-    - Allow the receiver to fault to map the page. Process receives message via
-      the normal future polling.
-
-- I am toying with the idea of not having processes at all, just DAGs of
-  continuations which may or may not choose to pass on their capabilities.
+- Need a coherent programming model... how does a user process load other tasks?
+- Need to fill out the set of reasonable events.
+- Networking? I've never done that before...
 
 # Building
 
