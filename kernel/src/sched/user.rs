@@ -85,7 +85,7 @@ impl KElfLoader {
             .map(|(base, address)| {
                 (
                     base,
-                    address.with(|cap| unsafe { cap_unwrap!(VirtualMemoryRegion(cap)).start() }),
+                    address.with(|cap| cap_unwrap!(VirtualMemoryRegion(cap)).start()),
                 )
             })
             .unwrap();
@@ -137,7 +137,6 @@ impl ElfLoader for KElfLoader {
                     addr,
                     self.vbase + entry.get_addend()
                 );
-                Ok(())
             }
             _ => Err("Unexpected relocation encountered"),
         }
