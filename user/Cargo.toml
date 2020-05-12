@@ -1,0 +1,8 @@
+[package]
+name = "test-user"
+version = "0.1.0"
+authors = ["mark <markm@cs.wisc.edu>"]
+edition = "2018"
+
+[dependencies]
+rs = { path = "../librs" }

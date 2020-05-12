@@ -9,6 +9,10 @@ this repo. Generally, `master` should compile and run.
 
 # WIP
 
+- Start on `librs` (the equivalent of libc for this project).
+    - See `user/src/main.rs` as an example userspace program.
+    - Compile userspace progs with `cargo xbuild --target target.json`
+
 - Paging
     - `memory::paging::map_region`
     - Need some way of registering valid memory mappings.
