@@ -12,6 +12,8 @@ this repo. Generally, `master` should compile and run.
 - Start on `librs` (the equivalent of libc for this project).
     - See `user/src/main.rs` as an example userspace program.
     - Compile userspace progs with `cargo xbuild --target target.json`
+    - Need to factor out data structures into `librs` for use by kernel and
+      userspace. Then, start building APIs for userspace continuations.
 
 - Paging
     - `memory::paging::map_region`
