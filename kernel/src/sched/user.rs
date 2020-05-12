@@ -326,12 +326,12 @@ mod syscall {
 
         // Handle the system call. The syscall number is passed in %rax.
         match saved_regs.rax {
-            0 => {
+            0xDEADBEEF => {
                 printk!("Task completed.\n");
 
                 crate::sched::sched();
             }
-            n => printk!("syscall #{:#x?}\n", n),
+            n => printk!("unknown syscall #{:#x?}\n", n),
         }
 
         // Return to usermode

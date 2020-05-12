@@ -78,7 +78,7 @@ with stuff!
 - rust, nightly
 
   ```txt
-  rustc 1.42.0-nightly (0de96d37f 2019-12-19)
+  rustc 1.45.0-nightly (99cb9ccb9 2020-05-11)
   ```
 
 - `llvm-tools-preview` rust distribution component via `rustup component add llvm-tools-preview`
@@ -92,7 +92,9 @@ with stuff!
 To build and run
 ```console
 $ cd os2/user
-$ make
+$ cargo xbuild --target x86_64-unknown-elf.json --release
 $ cd ../kernel
-$ bootimage run # --release for optimized build
+$ bootimage run
 ```
+
+`bootimage` can optionally be passed `--release` for optimized builds.

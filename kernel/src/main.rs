@@ -104,8 +104,9 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                             Continuation::new(|_| {
                                 printk!("Attempting to switch to user!\n");
 
-                                let (_handle, rip) =
-                                    user::load_user_elf(core::include_bytes!("../../user/test"));
+                                let (_handle, rip) = user::load_user_elf(core::include_bytes!(
+                                    "../../user/target/x86_64-unknown-elf/release/test-user"
+                                ));
                                 let rsp = user::allocate_user_stack().with(|cap| {
                                     let region = cap_unwrap!(VirtualMemoryRegion(cap));
                                     let start = region.start();
