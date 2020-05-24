@@ -80,7 +80,7 @@ with stuff!
 - rust, nightly
 
   ```txt
-  rustc 1.45.0-nightly (99cb9ccb9 2020-05-11)
+  rustc 1.45.0-nightly (8970e8bcf 2020-05-23)
   ```
 
 - `llvm-tools-preview` rust distribution component via `rustup component add llvm-tools-preview`
