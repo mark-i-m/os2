@@ -272,46 +272,42 @@ mod syscall {
     #[naked]
     pub(super) unsafe extern "C" fn entry() {
         // Switch to tmp stack, save user regs
-        llvm_asm!(
+        asm!(
             "
             # save the user stack pointer to %rdx before we switch stacks.
-            mov %rsp, %rdx
+            mov rdx, rsp
 
             # switch to the tmp stack
-            mov $0, %rsp
-            mov (%rsp), %rsp
+            # The syntax is a bit weird but this actually loads the value at
+            # `super::super::CURRENT_STACK_HEAD`, not it's address!
+            mov rsp, CURRENT_STACK_HEAD
 
             # start saving stuff
-            pushq %rdx # user rsp
-            pushq %rcx # user rip
-            pushq %r11 # user rflags
+            push rdx # user rsp
+            push rcx # user rip
+            push r11 # user rflags
 
-            pushq %r15
-            pushq %r14
-            pushq %r13
-            pushq %r12
-            pushq %r11
-            pushq %r10
-            pushq %r9
-            pushq %r8
-            pushq %rbp
-            pushq %rsi
-            pushq %rdi
-            pushq %rdx
-            pushq %rcx
-            pushq %rbx
-            pushq %rax
+            push r15
+            push r14
+            push r13
+            push r12
+            push r11
+            push r10
+            push r9
+            push r8
+            push rbp
+            push rsi
+            push rdi
+            push rdx
+            push rcx
+            push rbx
+            push rax
 
             # handle the system call. The saved registers are passed at the top of the stack where
             # we just pushed them.
-            mov %rsp, %rdi
+            mov rdi, rsp
             call handle_syscall
             "
-            : /* no outputs */
-            : "i"(&super::super::CURRENT_STACK_HEAD)
-            : "memory", "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12",
-              "r13", "r14", "r15", "rbp", "stack"
-            : "volatile"
         );
 
         unreachable!();
@@ -349,48 +345,44 @@ mod syscall {
         //      - user rsp
         //      - clear all other regs
         unsafe {
-            llvm_asm!(
+            asm!(
                 "
                 # load address of `registers` to `rcx` in inline asm
 
                 # restore registers
-                movq     (%rcx), %rax
-                movq  0x8(%rcx), %rbx
+                mov rax, [rcx]
+                mov rbx, [rcx + 0x8]
 
-                movq 0x18(%rcx), %rdx
-                movq 0x20(%rcx), %rdi
-                movq 0x28(%rcx), %rsi
-                movq 0x30(%rcx), %rbp
-                movq 0x38(%rcx), %r8
-                movq 0x40(%rcx), %r9
-                movq 0x48(%rcx), %r10
+                mov rdx, [rcx + 0x18]
+                mov rdi, [rcx + 0x20]
+                mov rsi, [rcx + 0x28]
+                mov rbp, [rcx + 0x30]
+                mov r8,  [rcx + 0x38]
+                mov r9,  [rcx + 0x40]
+                mov r10, [rcx + 0x48]
 
-                movq 0x58(%rcx), %r12
-                movq 0x60(%rcx), %r13
-                movq 0x68(%rcx), %r14
-                movq 0x70(%rcx), %r15
+                mov r12, [rcx + 0x58]
+                mov r13, [rcx + 0x60]
+                mov r14, [rcx + 0x68]
+                mov r15, [rcx + 0x70]
 
                 # user rflags
-                movq 0x78(%rcx), %r11
+                mov r11, [rcx + 0x78]
 
                 # disable interrupts before loading the user stack; otherwise, an interrupt may be
                 # serviced on the wrong stack.
                 cli
 
                 # no more stack refs until sysret
-                movq 0x88(%rcx), %rsp
+                mov rsp, [rcx + 0x88]
 
                 # user rip
-                movq 0x80(%rcx), %rcx
+                mov rcx, [rcx + 0x80]
 
                 # return to usermode (ring 3)
                 sysretq
-                "
-                : /* no outputs */
-                : "{rcx}"(registers)
-                : "memory", "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11",
-                  "r12", "r13", "r14", "r15", "rbp", "rsp", "stack"
-                : "volatile"
+                ",
+                in("rcx") registers,
             );
         }
 

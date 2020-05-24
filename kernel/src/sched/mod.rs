@@ -20,6 +20,7 @@ static SCHEDULER: Mutex<Option<Scheduler>> = Mutex::new(None);
 /// The head of the current stack
 // I think the scheduler and the syscall handler are the only ones using this,
 // and by construction at most one of them can be running at a time...
+#[no_mangle]
 static mut CURRENT_STACK_HEAD: u64 = 0;
 
 /// The kernel task scheduler
