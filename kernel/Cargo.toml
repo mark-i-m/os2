@@ -9,12 +9,11 @@ rlibc = "1.0.0"
 spin = "0.5"
 smallheap = { git = "https://github.com/mark-i-m/smallheap", features = ["no_std"] }
 buddy = { git = "https://github.com/mark-i-m/buddy" }
-#x86_64 = "0.8.2"
-x86_64 = { git = "https://github.com/mark-i-m/x86_64", branch = "fix-flags" }
+x86_64 = "0.11"
 os_bootinfo = "0.2.1"
 rand = { version = "0.6", default-features = false, features = ["alloc"] }
-bootloader = { version = "0.8.3", features = ["recursive_page_table"]}
-elfloader = "0.9.0"
+bootloader = { version = "0.9.4", features = ["recursive_page_table"]}
+elfloader = "0.10.0"
 
 [package.metadata.bootimage]
 default-target = "x86_64-unknown-elf.json"

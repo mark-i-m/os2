@@ -272,7 +272,7 @@ mod syscall {
     #[naked]
     pub(super) unsafe extern "C" fn entry() {
         // Switch to tmp stack, save user regs
-        asm!(
+        llvm_asm!(
             "
             # save the user stack pointer to %rdx before we switch stacks.
             mov %rsp, %rdx
@@ -349,7 +349,7 @@ mod syscall {
         //      - user rsp
         //      - clear all other regs
         unsafe {
-            asm!(
+            llvm_asm!(
                 "
                 # load address of `registers` to `rcx` in inline asm
 

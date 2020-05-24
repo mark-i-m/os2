@@ -27,7 +27,7 @@ use x86_64::{
         idt::{InterruptStackFrame, PageFaultErrorCode},
         paging::{
             FrameAllocator, Mapper, Page, PageSize, PageTable, PageTableFlags, PageTableIndex,
-            PhysFrame, RecursivePageTable, Size2MiB, Size4KiB, UnusedPhysFrame,
+            PhysFrame, RecursivePageTable, Size2MiB, Size4KiB
         },
     },
     PhysAddr, VirtAddr,
@@ -91,7 +91,7 @@ mod phys {
     use bootloader::{bootinfo::MemoryRegionType, BootInfo};
 
     use x86_64::{
-        structures::paging::{FrameAllocator, PageSize, PhysFrame, Size4KiB, UnusedPhysFrame},
+        structures::paging::{FrameAllocator, PageSize, PhysFrame, Size4KiB},
         PhysAddr,
     };
 
@@ -119,11 +119,9 @@ mod phys {
     }
 
     unsafe impl FrameAllocator<Size4KiB> for BuddyAllocator {
-        fn allocate_frame(&mut self) -> Option<UnusedPhysFrame<Size4KiB>> {
+        fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
             self.0.alloc(1).map(|f| {
-                let frame = PhysFrame::from_start_address(PhysAddr::new(f as u64 * Size4KiB::SIZE))
-                    .unwrap();
-                unsafe { UnusedPhysFrame::new(frame) }
+                PhysFrame::from_start_address(PhysAddr::new(f as u64 * Size4KiB::SIZE)).unwrap()
             })
         }
     }
@@ -226,7 +224,7 @@ fn init_early_paging(boot_info: &'static BootInfo) {
                 .unwrap()
                 .map_to(
                     page,
-                    UnusedPhysFrame::new(frame),
+                    frame,
                     PageTableFlags::PRESENT
                         | PageTableFlags::WRITABLE
                         | PageTableFlags::GLOBAL
@@ -405,11 +403,8 @@ pub extern "x86-interrupt" fn handle_page_fault(
     let cr2: u64;
     unsafe {
         asm! {
-            "movq %cr2, $0"
-             : "=r"(cr2)
-             : /* no input */
-             : /* no clobbers */
-             : "volatile"
+            "mov {}, cr2",
+            out(reg) cr2
         };
     }
 
@@ -438,13 +433,16 @@ pub extern "x86-interrupt" fn handle_page_fault(
                 .unwrap()
                 .allocate_frame()
                 .expect("Unable to allocate physical memory");
-            PAGE_TABLES
-                .lock()
-                .as_mut()
-                .unwrap()
-                .map_to(page, frame, *flags, PHYS_MEM_ALLOC.lock().as_mut().unwrap())
-                .expect("Unable to map page")
-                .flush();
+
+            unsafe {
+                PAGE_TABLES
+                    .lock()
+                    .as_mut()
+                    .unwrap()
+                    .map_to(page, frame, *flags, PHYS_MEM_ALLOC.lock().as_mut().unwrap())
+                    .expect("Unable to map page")
+                    .flush();
+            }
 
             printk!("\tDone with page fault.\n");
         }

@@ -162,16 +162,13 @@ pub fn sched() -> ! {
 /// already switched to the new stack. This is done so that the compiler knows that no state should
 /// be carried over, so we cannot lose any important stack variables (e.g. locks).
 unsafe fn sched_part_2_thunk(rsp: usize) -> ! {
-    asm! {
-        "
-        movq $0, %rsp
-        movq $0, %rbp
-        "
-         : /* no outputs */
-         : "r"(rsp)
-         : "rbp", "rsp"
-         : "volatile"
-    };
+    asm!("
+        mov rsp, {newrsp}
+        mov rbp, {newrsp}
+        ",
+        newrsp = in(reg) rsp,
+    );
+
     sched_part_3();
 }
 

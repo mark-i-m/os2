@@ -1,6 +1,7 @@
 #![feature(
     lang_items,
     asm,
+    llvm_asm,
     alloc_error_handler,
     box_syntax,
     abi_x86_interrupt,
